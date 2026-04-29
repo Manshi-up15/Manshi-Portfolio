@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Manshi — UI/UX Designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Outfit:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090f;
+  --bg2:#0d0f1a;
+  --bg3:#12152a;
+  --surface:rgba(255,255,255,0.04);
+  --surface2:rgba(255,255,255,0.07);
+  --border:rgba(255,255,255,0.08);
+  --border2:rgba(255,255,255,0.14);
+  --text:#f0eef8;
+  --text2:#a09bb8;
+  --text3:#5c5878;
+  --violet:#9b6dff;
+  --violet2:#c084fc;
+  --pink:#f472b6;
+  --cyan:#22d3ee;
+  --serif:'Cormorant Garamond',serif;
+  --sans:'Outfit',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:400;line-height:1.7;overflow-x:hidden}
+
+.orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;animation:float 9s ease-in-out infinite}
+.orb1{width:520px;height:520px;top:-180px;right:-120px;background:radial-gradient(circle,rgba(155,109,255,0.22),transparent 70%);animation-delay:0s}
+.orb2{width:420px;height:420px;bottom:-120px;left:-120px;background:radial-gradient(circle,rgba(244,114,182,0.18),transparent 70%);animation-delay:-3.5s}
+.orb3{width:320px;height:320px;top:42%;left:28%;background:radial-gradient(circle,rgba(34,211,238,0.1),transparent 70%);animation-delay:-7s}
+@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-28px) scale(1.04)}}
+
+.cursor-glow{position:fixed;width:280px;height:280px;pointer-events:none;z-index:0;border-radius:50%;background:radial-gradient(circle,rgba(155,109,255,0.07),transparent 70%);transform:translate(-50%,-50%);transition:left 0.08s,top 0.08s}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.25rem 4rem;background:rgba(8,9,15,0.72);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:var(--serif);font-size:1.3rem;background:linear-gradient(135deg,var(--violet2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-links{display:flex;gap:2.5rem;list-style:none}
+.nav-links a{text-decoration:none;color:var(--text2);font-size:0.8rem;letter-spacing:0.06em;text-transform:uppercase;transition:color 0.2s}
+.nav-links a:hover{color:var(--violet2)}
+
+.hero{min-height:100vh;position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:6rem 4rem 4rem}
+.hero-tag{display:inline-flex;align-items:center;gap:0.5rem;font-family:var(--mono);font-size:0.62rem;color:var(--violet2);border:1px solid rgba(192,132,252,0.3);background:rgba(192,132,252,0.07);padding:0.35rem 1rem;border-radius:100px;letter-spacing:0.08em;margin-bottom:2rem;text-transform:uppercase}
+.hero-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--violet2);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+.hero h1{font-family:var(--serif);font-size:clamp(3.6rem,6.5vw,6rem);line-height:1.0;letter-spacing:-0.01em;margin-bottom:1.5rem;font-weight:600}
+.hero h1 .l1,.hero h1 .l3{display:block;color:var(--text)}
+.hero h1 .l2{display:block;font-style:italic;font-weight:400;background:linear-gradient(100deg,var(--violet2) 0%,var(--pink) 55%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:1.02rem;color:var(--text2);max-width:440px;line-height:1.72;margin-bottom:2.5rem}
+.hero-ctas{display:flex;gap:1rem;flex-wrap:wrap}
+.btn-primary{background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;text-decoration:none;padding:0.9rem 2.2rem;font-size:0.88rem;font-weight:500;letter-spacing:0.02em;border-radius:8px;transition:transform 0.15s,box-shadow 0.2s;display:inline-block;box-shadow:0 0 32px rgba(155,109,255,0.32)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(155,109,255,0.5)}
+.btn-ghost{border:1px solid var(--border2);color:var(--text2);text-decoration:none;padding:0.9rem 2.2rem;font-size:0.88rem;border-radius:8px;transition:all 0.2s;display:inline-block;background:var(--surface)}
+.btn-ghost:hover{border-color:rgba(192,132,252,0.5);color:var(--violet2);background:rgba(192,132,252,0.07)}
+
+.hero-right{display:flex;justify-content:flex-end;align-items:center}
+.hero-card{width:340px;border:1px solid rgba(192,132,252,0.2);background:rgba(13,15,26,0.85);backdrop-filter:blur(20px);border-radius:18px;padding:2rem;position:relative;overflow:hidden;box-shadow:0 0 70px rgba(155,109,255,0.14),inset 0 1px 0 rgba(255,255,255,0.05)}
+.hero-card::before{content:'';position:absolute;top:-60%;left:-60%;width:220%;height:220%;background:conic-gradient(from 180deg at 50% 50%,transparent 0deg,rgba(192,132,252,0.07) 60deg,transparent 120deg);animation:spin 10s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.hc-content{position:relative;z-index:1}
+.hc-label{font-family:var(--mono);font-size:0.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:1.5rem}
+.hc-stats{display:flex;flex-direction:column;gap:0}
+.hc-stat{display:flex;justify-content:space-between;align-items:center;padding:0.9rem 0;border-bottom:1px solid var(--border)}
+.hc-stat:last-child{border-bottom:none}
+.hc-stat-label{font-size:0.78rem;color:var(--text2)}
+.hc-stat-val{font-family:var(--serif);font-size:1.55rem;font-weight:600;color:var(--violet2)}
+.hc-quote{font-family:var(--serif);font-style:italic;font-size:0.95rem;color:var(--text2);line-height:1.55;padding-top:1.25rem;border-top:1px solid var(--border);margin-top:0.25rem}
+
+.marquee-wrap{position:relative;z-index:1;overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:rgba(192,132,252,0.03);padding:0.85rem 0}
+.marquee-track{display:flex;gap:2.5rem;animation:marquee 22s linear infinite;white-space:nowrap}
+.marquee-item{font-family:var(--mono);font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em}
+.marquee-dot{color:var(--violet2);font-size:0.45rem}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+section{padding:6rem 4rem;position:relative;z-index:1}
+.section-label{font-family:var(--mono);font-size:0.58rem;color:var(--violet2);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem}
+.section-label::before{content:'';display:block;width:2rem;height:1px;background:linear-gradient(90deg,var(--violet2),transparent)}
+.section-title{font-family:var(--serif);font-size:clamp(2.4rem,4vw,3.5rem);line-height:1.05;letter-spacing:-0.01em;margin-bottom:3rem;font-weight:600}
+hr.divider{border:none;border-top:1px solid var(--border);margin:0;position:relative;z-index:1}
+
+.work-grid{display:flex;flex-direction:column;gap:0}
+.project-row{display:grid;grid-template-columns:1fr 1.8fr;border-bottom:1px solid var(--border);transition:background 0.3s;cursor:default}
+.project-row:hover{background:rgba(192,132,252,0.035)}
+.project-left{padding:2.5rem 3rem 2.5rem 0;border-right:1px solid var(--border)}
+.project-num{font-family:var(--mono);font-size:0.62rem;color:var(--text3);margin-bottom:0.75rem}
+.project-title{font-family:var(--serif);font-size:2rem;font-weight:600;line-height:1.1;margin-bottom:0.5rem;color:var(--text)}
+.project-desc{font-size:0.8rem;color:var(--text3);margin-bottom:1rem}
+.project-tags{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:1rem}
+.tag{font-size:0.62rem;color:var(--violet2);border:1px solid rgba(192,132,252,0.28);background:rgba(192,132,252,0.07);padding:0.18rem 0.6rem;border-radius:100px;text-transform:uppercase;letter-spacing:0.05em}
+.project-right{padding:2.5rem 0 2.5rem 3rem}
+.case-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem 3rem;margin-bottom:1.5rem}
+.case-block label{display:block;font-family:var(--mono);font-size:0.56rem;color:var(--violet2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem}
+.case-block p{font-size:0.855rem;color:var(--text2);line-height:1.65}
+.process-line{display:flex;margin:1.5rem 0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.process-step{flex:1;padding:0.7rem 0.6rem;font-size:0.7rem;color:var(--text2);text-align:center;border-right:1px solid var(--border);transition:background 0.2s,color 0.2s}
+.process-step:hover{background:rgba(192,132,252,0.1);color:var(--violet2)}
+.process-step:last-child{border-right:none}
+.process-step span{display:block;font-family:var(--mono);font-size:0.52rem;color:var(--text3);margin-bottom:0.2rem}
+.impact-bar{background:rgba(192,132,252,0.07);border-left:2px solid var(--violet2);padding:0.85rem 1.1rem;font-size:0.84rem;color:var(--text2);margin-top:1rem;border-radius:0 8px 8px 0}
+.impact-bar strong{color:var(--violet2)}
+
+.about-layout{display:grid;grid-template-columns:1fr 1fr;gap:6rem;align-items:start}
+.about-text p{font-size:1rem;color:var(--text2);line-height:1.8;margin-bottom:1.25rem}
+.about-text p strong{color:var(--text);font-weight:500}
+.skills-group{margin-bottom:2rem}
+.skills-group h4{font-family:var(--mono);font-size:0.58rem;color:var(--violet2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.75rem}
+.skill-chips{display:flex;flex-wrap:wrap;gap:0.5rem}
+.chip{font-size:0.77rem;color:var(--text2);background:var(--surface);border:1px solid var(--border);padding:0.28rem 0.8rem;border-radius:6px;transition:all 0.2s}
+.chip:hover{border-color:rgba(192,132,252,0.4);color:var(--violet2);background:rgba(192,132,252,0.08)}
+.philosophy-box{margin-top:2.5rem;border:1px solid rgba(192,132,252,0.2);padding:2rem;border-radius:14px;background:linear-gradient(135deg,rgba(155,109,255,0.06),rgba(244,114,182,0.04));box-shadow:0 0 40px rgba(155,109,255,0.08);position:relative;overflow:hidden}
+.philosophy-box::before{content:'\201C';position:absolute;top:-0.5rem;left:1rem;font-family:var(--serif);font-size:6rem;color:rgba(192,132,252,0.12);line-height:1;pointer-events:none}
+.philosophy-box p{font-family:var(--serif);font-style:italic;font-size:1.12rem;line-height:1.6;color:var(--text);position:relative}
+.philosophy-box cite{display:block;margin-top:1rem;font-family:var(--mono);font-size:0.58rem;color:var(--text3);font-style:normal;letter-spacing:0.06em}
+
+.exp-list{display:flex;flex-direction:column;gap:0}
+.exp-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--border);padding:2.5rem 0;gap:3rem}
+.exp-date{font-family:var(--mono);font-size:0.63rem;color:var(--text3);padding-top:0.25rem;line-height:1.7}
+.exp-active{color:var(--violet2);font-size:0.58rem;margin-top:0.25rem;display:block}
+.exp-content h3{font-family:var(--serif);font-size:1.5rem;font-weight:600;margin-bottom:0.25rem;color:var(--text)}
+.exp-org{font-size:0.82rem;color:var(--violet2);font-weight:500;margin-bottom:1rem}
+.exp-points{list-style:none;display:flex;flex-direction:column;gap:0.6rem}
+.exp-points li{font-size:0.87rem;color:var(--text2);padding-left:1.3rem;position:relative;line-height:1.65}
+.exp-points li::before{content:'→';position:absolute;left:0;color:var(--violet2);font-size:0.78rem;top:0.06rem}
+
+.thinking-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.think-card{border:1px solid var(--border);padding:2rem;border-radius:12px;background:var(--surface);transition:transform 0.25s,border-color 0.25s,box-shadow 0.25s;position:relative;overflow:hidden}
+.think-card::after{content:'';position:absolute;inset:0;border-radius:12px;opacity:0;background:linear-gradient(135deg,rgba(155,109,255,0.06),rgba(244,114,182,0.04));transition:opacity 0.25s;pointer-events:none}
+.think-card:hover{transform:translateY(-4px);border-color:rgba(192,132,252,0.35);box-shadow:0 12px 40px rgba(155,109,255,0.12)}
+.think-card:hover::after{opacity:1}
+.think-icon{font-family:var(--mono);font-size:0.56rem;color:var(--violet2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;position:relative;z-index:1}
+.think-card h3{font-family:var(--serif);font-size:1.15rem;font-weight:600;margin-bottom:0.75rem;color:var(--text);position:relative;z-index:1}
+.think-card p{font-size:0.82rem;color:var(--text2);line-height:1.65;position:relative;z-index:1}
+
+.ach-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.ach-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.75rem;display:flex;gap:1.25rem;align-items:flex-start;transition:border-color 0.2s,box-shadow 0.2s}
+.ach-item:hover{border-color:rgba(192,132,252,0.35);box-shadow:0 8px 30px rgba(155,109,255,0.1)}
+.ach-emoji{font-size:1.8rem;line-height:1;flex-shrink:0}
+.ach-item h4{font-weight:500;font-size:0.92rem;margin-bottom:0.3rem;color:var(--text)}
+.ach-item p{font-size:0.77rem;color:var(--text3);line-height:1.5}
+
+.contact-section{background:linear-gradient(135deg,rgba(155,109,255,0.05) 0%,rgba(244,114,182,0.04) 50%,rgba(34,211,238,0.03) 100%);border-top:1px solid var(--border)}
+.contact-inner{max-width:660px}
+.contact-inner p{font-size:1.02rem;color:var(--text2);line-height:1.75;margin-bottom:2.5rem}
+.contact-email{font-family:var(--serif);font-size:2.4rem;font-weight:600;background:linear-gradient(90deg,var(--violet2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none;display:inline-block;transition:opacity 0.2s}
+.contact-email:hover{opacity:0.78}
+.socials{display:flex;gap:1rem;margin-top:3rem;flex-wrap:wrap}
+.social-link{font-family:var(--mono);font-size:0.62rem;text-decoration:none;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;border:1px solid var(--border);padding:0.5rem 1.1rem;border-radius:100px;transition:all 0.2s;background:var(--surface)}
+.social-link:hover{border-color:rgba(192,132,252,0.5);color:var(--violet2);background:rgba(192,132,252,0.08)}
+
+footer{border-top:1px solid var(--border);padding:2rem 4rem;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
+footer p{font-family:var(--mono);font-size:0.58rem;color:var(--text3);letter-spacing:0.04em}
+
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity 0.7s ease,transform 0.7s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+@media(max-width:900px){
+  nav{padding:1rem 1.5rem}
+  .hero{grid-template-columns:1fr;padding:5rem 1.5rem 3rem}
+  .hero-right{display:none}
+  section{padding:4rem 1.5rem}
+  .about-layout,.case-grid,.thinking-grid,.ach-layout{grid-template-columns:1fr}
+  .project-row{grid-template-columns:1fr}
+  .project-left{border-right:none;border-bottom:1px solid var(--border);padding-right:0;padding-bottom:1.5rem}
+  .project-right{padding-left:0}
+  .exp-row{grid-template-columns:1fr;gap:0.5rem}
+  footer{flex-direction:column;gap:0.75rem;text-align:center}
+  .orb{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<nav>
+  <div class="nav-logo">Manshi</div>
+  <ul class="nav-links">
+    <li><a href="#work">Work</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<section class="hero" id="top">
+  <div class="hero-left fade-in">
+    <div class="hero-tag">Available for Internships · 2025</div>
+    <h1>
+      <span class="l1">Design that</span>
+      <span class="l2">thinks</span>
+      <span class="l3">before it looks.</span>
+    </h1>
+    <p class="hero-sub">UI/UX Designer building interfaces where clarity is the strategy — not just the aesthetic. CS background, Figma fluency, systems mindset.</p>
+    <div class="hero-ctas">
+      <a href="#work" class="btn-primary">View Selected Work</a>
+      <a href="#contact" class="btn-ghost">Get in Touch</a>
+    </div>
+  </div>
+  <div class="hero-right fade-in">
+    <div class="hero-card">
+      <div class="hc-content">
+        <div class="hc-label">Designer Profile · 2025</div>
+        <div class="hc-stats">
+          <div class="hc-stat"><span class="hc-stat-label">End-to-end projects</span><span class="hc-stat-val">4+</span></div>
+          <div class="hc-stat"><span class="hc-stat-label">Design roles held</span><span class="hc-stat-val">2</span></div>
+          <div class="hc-stat"><span class="hc-stat-label">CGPA · SRM IST</span><span class="hc-stat-val">8.56</span></div>
+          <div class="hc-stat"><span class="hc-stat-label">Primary tool</span><span class="hc-stat-val" style="font-family:var(--sans);font-size:1rem">Figma</span></div>
+        </div>
+        <div class="hc-quote">"If it needs explaining, it needs redesigning."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee-wrap">
+  <div class="marquee-track" id="mq">
+    <span class="marquee-item">User Research</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Wireframing</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Prototyping</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Design Systems</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Figma</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Usability Testing</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Interaction Design</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Visual Hierarchy</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Info Architecture</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">User Research</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Wireframing</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Prototyping</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Design Systems</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Figma</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Usability Testing</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Interaction Design</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Visual Hierarchy</span><span class="marquee-dot">◆</span>
+    <span class="marquee-item">Info Architecture</span><span class="marquee-dot">◆</span>
+  </div>
+</div>
+
+<section id="work">
+  <div class="section-label">Selected Work</div>
+  <div class="section-title">Projects I care<br>about, deeply.</div>
+  <div class="work-grid">
+
+    <div class="project-row fade-in">
+      <div class="project-left">
+        <div class="project-num">01 / 04</div>
+        <div class="project-title">Studique</div>
+        <div class="project-desc">Learning management platform — end-to-end product design</div>
+        <div class="project-tags"><span class="tag">Design Lead</span><span class="tag">Figma</span><span class="tag">Design System</span><span class="tag">Prototyping</span></div>
+      </div>
+      <div class="project-right">
+        <div class="case-grid">
+          <div class="case-block"><label>Problem</label><p>Students using multiple disconnected tools had no unified, distraction-free space — causing friction, drop-offs, and lost context mid-session.</p></div>
+          <div class="case-block"><label>My Role</label><p>Design Lead — full ownership from direction-setting to developer handoff, with zero supervision.</p></div>
+          <div class="case-block"><label>Goal</label><p>Create a cohesive learning experience with intuitive navigation, reducing cognitive load so students stay focused.</p></div>
+          <div class="case-block"><label>Key Decision</label><p>Simplified nav from 7 items to 3 core flows. Built a reusable component library enforcing visual consistency across all screens.</p></div>
+        </div>
+        <div class="process-line">
+          <div class="process-step"><span>01</span>Discovery</div>
+          <div class="process-step"><span>02</span>User Flows</div>
+          <div class="process-step"><span>03</span>Wireframes</div>
+          <div class="process-step"><span>04</span>High-fi</div>
+          <div class="process-step"><span>05</span>Handoff</div>
+        </div>
+        <div class="impact-bar"><strong>Outcome:</strong> Developers implemented the design system with zero revision loops — a first for this team. Navigation friction measurably reduced.</div>
+      </div>
+    </div>
+
+    <div class="project-row fade-in">
+      <div class="project-left">
+        <div class="project-num">02 / 04</div>
+        <div class="project-title">HappenHub</div>
+        <div class="project-desc">Event discovery app — interface and user flow design</div>
+        <div class="project-tags"><span class="tag">UX Design</span><span class="tag">User Flows</span><span class="tag">Mobile</span><span class="tag">Figma</span></div>
+      </div>
+      <div class="project-right">
+        <div class="case-grid">
+          <div class="case-block"><label>Problem</label><p>Discovering local events required visiting multiple platforms — no single experience offered relevant, browsable events with low-effort entry.</p></div>
+          <div class="case-block"><label>My Role</label><p>Sole designer. Responsible for IA, user flows, and all interface screens from zero.</p></div>
+          <div class="case-block"><label>Goal</label><p>Let users find and engage with events in under 3 taps — reducing decision fatigue through smart layout hierarchy.</p></div>
+          <div class="case-block"><label>Key Decision</label><p>Chose image-first card layout over metadata-heavy list view — users scan and decide faster when visual identity leads.</p></div>
+        </div>
+        <div class="process-line">
+          <div class="process-step"><span>01</span>Research</div>
+          <div class="process-step"><span>02</span>IA Mapping</div>
+          <div class="process-step"><span>03</span>Lo-fi Flows</div>
+          <div class="process-step"><span>04</span>Visual Design</div>
+          <div class="process-step"><span>05</span>Prototype</div>
+        </div>
+        <div class="impact-bar"><strong>Learning:</strong> Designing for browsable content taught me the difference between navigation that informs vs. navigation that invites.</div>
+      </div>
+    </div>
+
+    <div class="project-row fade-in">
+      <div class="project-left">
+        <div class="project-num">03 / 04</div>
+        <div class="project-title">CoCred</div>
+        <div class="project-desc">Certificate verification platform — trust-first UX</div>
+        <div class="project-tags"><span class="tag">UX Design</span><span class="tag">Workflow Design</span><span class="tag">Accessibility</span></div>
+      </div>
+      <div class="project-right">
+        <div class="case-grid">
+          <div class="case-block"><label>Problem</label><p>Verification was opaque and anxiety-inducing — users didn't know what happened after upload, or whether it would succeed.</p></div>
+          <div class="case-block"><label>My Role</label><p>UI/UX design and workflow structuring. Focused on reducing user uncertainty at every stage.</p></div>
+          <div class="case-block"><label>Goal</label><p>Design a transparent verification interface — every state visible, every action obvious, no dead ends.</p></div>
+          <div class="case-block"><label>Key Decision</label><p>Plain-language feedback over technical jargon. Explicit status indicators at every step in the flow.</p></div>
+        </div>
+        <div class="process-line">
+          <div class="process-step"><span>01</span>User Scenarios</div>
+          <div class="process-step"><span>02</span>Flow Mapping</div>
+          <div class="process-step"><span>03</span>Interface Design</div>
+          <div class="process-step"><span>04</span>Review</div>
+        </div>
+        <div class="impact-bar"><strong>Outcome:</strong> Multi-step confusion replaced by a single guided upload experience with real-time, human-readable status feedback.</div>
+      </div>
+    </div>
+
+    <div class="project-row fade-in">
+      <div class="project-left">
+        <div class="project-num">04 / 04</div>
+        <div class="project-title">OrbitGuard</div>
+        <div class="project-desc">Satellite collision avoidance — complex data, made human</div>
+        <div class="project-tags"><span class="tag">System Design</span><span class="tag">Data Viz</span><span class="tag">Conceptual</span></div>
+      </div>
+      <div class="project-right">
+        <div class="case-grid">
+          <div class="case-block"><label>Problem</label><p>Satellite operators lack intuitive tools to monitor orbital proximity — collision risk data is raw, hard to parse, and latency-critical.</p></div>
+          <div class="case-block"><label>My Role</label><p>Conceptualized the full system. Designed interaction logic, alert mechanisms, and spatial data visualization approach.</p></div>
+          <div class="case-block"><label>Goal</label><p>Translate complex real-time spatial data into a dashboard that supports fast, confident decisions.</p></div>
+          <div class="case-block"><label>Key Decision</label><p>Risk-tiered color-coded proximity zones. Critical info above the fold, always — designed for eyes-on-screen efficiency.</p></div>
+        </div>
+        <div class="process-line">
+          <div class="process-step"><span>01</span>Problem Framing</div>
+          <div class="process-step"><span>02</span>System Flow</div>
+          <div class="process-step"><span>03</span>Data Hierarchy</div>
+          <div class="process-step"><span>04</span>Interface Logic</div>
+        </div>
+        <div class="impact-bar"><strong>Learning:</strong> Good UX isn't about simplifying complexity — it's structuring it so the right person can act on it in time.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<section id="about">
+  <div class="section-label">About Me</div>
+  <div class="about-layout">
+    <div class="about-text fade-in">
+      <p>I'm Manshi — a UI/UX designer studying Computer Science at SRM Institute. I'm drawn to the gap between how systems actually work and how people experience them. That gap is where I design.</p>
+      <p>My CS background means I think in systems, not just screens. I can read a developer's constraints and design around them — not against them. I've shipped real designs that got implemented without endless revision cycles.</p>
+      <p>I care about <strong>usability over novelty</strong>. An interface that works invisibly is harder to design than one that looks impressive. I'm always chasing the former.</p>
+      <p>Right now I'm looking for opportunities where I can go deeper — into research, real user feedback, and the kind of iteration that only happens in a product environment.</p>
+      <div class="philosophy-box">
+        <p>"Design is the argument you make with every decision — about what matters, what doesn't, and who you're designing for."</p>
+        <cite>— How I think about every screen I touch</cite>
+      </div>
+    </div>
+    <div class="about-right fade-in">
+      <div class="skills-group">
+        <h4>Design Craft</h4>
+        <div class="skill-chips"><span class="chip">Figma</span><span class="chip">Wireframing</span><span class="chip">Prototyping</span><span class="chip">Design Systems</span><span class="chip">User Flows</span><span class="chip">Adobe Express</span></div>
+      </div>
+      <div class="skills-group">
+        <h4>Design Thinking</h4>
+        <div class="skill-chips"><span class="chip">Usability Principles</span><span class="chip">Accessibility</span><span class="chip">Visual Hierarchy</span><span class="chip">Interaction Design</span><span class="chip">Info Architecture</span></div>
+      </div>
+      <div class="skills-group">
+        <h4>Technical Fluency</h4>
+        <div class="skill-chips"><span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JavaScript</span><span class="chip">Git / GitHub</span></div>
+      </div>
+      <div class="skills-group">
+        <h4>Currently Growing In</h4>
+        <div class="skill-chips"><span class="chip">User Research Methods</span><span class="chip">Case Study Writing</span><span class="chip">Behance Portfolio</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<section id="experience">
+  <div class="section-label">Experience</div>
+  <div class="section-title">Where I've done<br>real work.</div>
+  <div class="exp-list">
+    <div class="exp-row fade-in">
+      <div class="exp-date">Jun 2025 — Present<span class="exp-active">● Active</span></div>
+      <div class="exp-content">
+        <h3>Design Lead</h3>
+        <div class="exp-org">Studique</div>
+        <ul class="exp-points">
+          <li>Owned the full design process — from first wireframe to developer handoff — on a live product used by real students.</li>
+          <li>Set the design direction across the entire application, establishing component standards that made the team faster over time.</li>
+          <li>Cut navigation complexity by restructuring flows based on actual usage patterns, not assumptions.</li>
+          <li>Bridged design and engineering: collaborated directly with developers so what shipped matched what was designed.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="exp-row fade-in">
+      <div class="exp-date">Jun 2025 — Jul 2025</div>
+      <div class="exp-content">
+        <h3>UI/UX Design Intern</h3>
+        <div class="exp-org">Coding Samurai</div>
+        <ul class="exp-points">
+          <li>Worked on real-world client projects under production constraints — not just training exercises.</li>
+          <li>Applied design thinking to identify usability gaps and redesign interaction flows from the ground up.</li>
+          <li>Delivered wireframes and prototypes with clear rationale for every design decision.</li>
+          <li>Collaborated in a team environment and adapted designs through structured feedback cycles.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<section id="thinking">
+  <div class="section-label">How I Think</div>
+  <div class="section-title">Design thinking<br>in practice.</div>
+  <div class="thinking-grid">
+    <div class="think-card fade-in">
+      <div class="think-icon">01 / Systems</div>
+      <h3>I design for the whole, not the screen.</h3>
+      <p>Before touching Figma, I map user flows and edge cases. A screen without context is decoration. Every interface must be part of a coherent journey.</p>
+    </div>
+    <div class="think-card fade-in">
+      <div class="think-icon">02 / Constraints</div>
+      <h3>Limits sharpen decisions.</h3>
+      <p>My CS background means I design knowing what's buildable. Technical constraints are creative parameters — this makes developer collaboration genuinely smoother.</p>
+    </div>
+    <div class="think-card fade-in">
+      <div class="think-icon">03 / Clarity</div>
+      <h3>If it needs explaining, it needs redesigning.</h3>
+      <p>I test every design against one question: would a new user know what to do here without guidance? If no — the interface has more work to do.</p>
+    </div>
+    <div class="think-card fade-in">
+      <div class="think-icon">04 / Research</div>
+      <h3>Academic rigor applied to design problems.</h3>
+      <p>Work on satellite image processing (quadtree approaches) trained me to structure complex visual data — skills that map directly to data-heavy UI challenges.</p>
+    </div>
+    <div class="think-card fade-in">
+      <div class="think-icon">05 / Iteration</div>
+      <h3>First ideas are hypotheses, not solutions.</h3>
+      <p>I treat wireframes as questions, not answers. Real design begins after the first version gets challenged — by feedback, edge cases, and reality.</p>
+    </div>
+    <div class="think-card fade-in">
+      <div class="think-icon">06 / Empathy</div>
+      <h3>The user is never wrong, the design is.</h3>
+      <p>When someone can't figure out an interface, blaming the user is always wrong. I design for the actual human in front of the screen — not the idealized one in my head.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<section id="achievements">
+  <div class="section-label">Achievements</div>
+  <div class="section-title" style="margin-bottom:2rem">Recognition &amp;<br>milestones.</div>
+  <div class="ach-layout">
+    <div class="ach-item fade-in"><div class="ach-emoji">🥈</div><div><h4>2nd Prize — Reuse &amp; Remodel Product</h4><p>SRM Institute of Science and Technology · Competitive product design challenge</p></div></div>
+    <div class="ach-item fade-in"><div class="ach-emoji">⭐</div><div><h4>NPTEL Elite + Silver — Programming in Java</h4><p>IIT Kharagpur · Top-tier national certification with distinction</p></div></div>
+    <div class="ach-item fade-in"><div class="ach-emoji">🏆</div><div><h4>Top 50 Teams — Smart India Hackathon</h4><p>National-level hackathon · Among thousands of competing teams</p></div></div>
+    <div class="ach-item fade-in"><div class="ach-emoji">⚡</div><div><h4>Hackathons — Guidewire DEVTrails &amp; Barclays</h4><p>Selected / proposed for industry hackathons · Cross-functional problem solving</p></div></div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<section id="contact" class="contact-section">
+  <div class="contact-inner fade-in">
+    <div class="section-label">Contact</div>
+    <div class="section-title">Let's build<br>something real.</div>
+    <p>I'm actively looking for UI/UX internship opportunities where I can contribute to a real product and grow under mentorship. If you're working on something that needs thoughtful design, I'd love to talk.</p>
+    <a href="mailto:sainimanshi93@gmail.com" class="contact-email">sainimanshi93@gmail.com</a>
+    <div class="socials">
+      <a href="https://www.linkedin.com/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base%3B75nGTxxxRIOQas%2FSxTYkOA%3D%3D" target="_blank" rel="noopener" class="social-link">LinkedIn</a>
+      <a href="https://www.behance.net/manshihere" target="_blank" rel="noopener" class="social-link">Behance</a>
+      <a href="https://github.com/Manshi-up15" target="_blank" rel="noopener" class="social-link">GitHub</a>
+      <a href="https://www.figma.com/proto/X9JPgzxy9Li5d9PeMcw7hM/Manshi-Portfolio?node-id=0-1&t=YPjPrKUfzOXN54LN-1" target="_blank" rel="noopener" class="social-link">Figma Portfolio</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2025 Manshi · UI/UX Designer · SRM Institute of Science and Technology</p>
+  <p>Designed with intention. Built with care.</p>
+</footer>
+
+<script>
+const glow = document.getElementById('cursorGlow');
+document.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top = e.clientY + 'px';
+});
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, {threshold: 0.07});
+document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+const mq = document.getElementById('mq');
+mq.parentElement.appendChild(mq.cloneNode(true));
+</script>
+</body>
+</html>

@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D·BODY — Human Form Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060810;
+    --surface: #0d1220;
+    --card: #111827;
+    --accent: #00e5ff;
+    --accent2: #ff3d71;
+    --accent3: #b388ff;
+    --text: #e8eaf6;
+    --muted: #546e7a;
+    --border: rgba(0,229,255,0.12);
+    --mono: 'Space Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    overflow-x: hidden;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 3rem;
+    background: rgba(6,8,16,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: var(--display);
+    font-size: 1.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 8rem 3rem 4rem;
+    gap: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+  .hero-glow {
+    position: absolute; top: 20%; left: 55%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,229,255,0.07) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .hero-left { position: relative; z-index: 2; }
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.8rem;
+  }
+  .hero-tag::before {
+    content: '';
+    display: block; width: 32px; height: 1px;
+    background: var(--accent);
+  }
+  .hero-title {
+    font-family: var(--display);
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    line-height: 0.92;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .hero-title em { color: var(--accent); font-style: normal; }
+  .hero-sub {
+    margin-top: 1.8rem;
+    font-size: 1rem;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 420px;
+  }
+  .hero-cta {
+    margin-top: 2.5rem;
+    display: inline-flex; align-items: center; gap: 0.8rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: var(--bg);
+    background: var(--accent);
+    border: none;
+    padding: 0.9rem 2rem;
+    cursor: pointer;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: opacity 0.2s, transform 0.2s;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  }
+  .hero-cta:hover { opacity: 0.85; transform: translateY(-2px); }
+
+  /* ── HERO 3D CANVAS ── */
+  #hero-canvas-wrap {
+    position: relative; z-index: 2;
+    width: 100%; height: 550px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #heroCanvas {
+    border-radius: 2px;
+    cursor: grab;
+  }
+  #heroCanvas:active { cursor: grabbing; }
+  .canvas-label {
+    position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: 0.7;
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:0.4} 50%{opacity:0.9} }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-item {
+    padding: 2rem 2.5rem;
+    border-right: 1px solid var(--border);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-num {
+    font-family: var(--display);
+    font-size: 3rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 0.4rem;
+  }
+
+  /* ── SECTION ── */
+  section { padding: 6rem 3rem; }
+  .section-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.8rem;
+  }
+  .section-tag::before {
+    content: '';
+    display: block; width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  .section-title {
+    font-family: var(--display);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin-bottom: 1.5rem;
+  }
+  .section-title em { color: var(--accent); font-style: normal; }
+
+  /* ── ANALYSER ── */
+  #analyser {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .analyser-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 3rem;
+    align-items: start;
+  }
+  .viewer-wrap {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    height: 600px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #viewerCanvas { cursor: grab; display: block; }
+  #viewerCanvas:active { cursor: grabbing; }
+  .viewer-overlay-tl, .viewer-overlay-br {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+  .viewer-overlay-tl { top: 1rem; left: 1rem; }
+  .viewer-overlay-br { bottom: 1rem; right: 1rem; }
+  .corner { position: absolute; width: 20px; height: 20px; }
+  .corner.tl { top: 0; left: 0; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .corner.tr { top: 0; right: 0; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  .corner.bl { bottom: 0; left: 0; border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+  .corner.br { bottom: 0; right: 0; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+
+  .controls-panel {
+    display: flex; flex-direction: column; gap: 1.5rem;
+  }
+  .panel-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* rotation display */
+  .angle-display {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .angle-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 0.8rem;
+    text-align: center;
+  }
+  .angle-axis {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .angle-val {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    color: var(--accent);
+  }
+  .angle-box.x .angle-val { color: #ff5252; }
+  .angle-box.y .angle-val { color: var(--accent); }
+  .angle-box.z .angle-val { color: #69f0ae; }
+
+  /* sliders */
+  .slider-row {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 0.8rem;
+  }
+  .slider-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    width: 20px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .slider-label.x { color: #ff5252; }
+  .slider-label.y { color: var(--accent); }
+  .slider-label.z { color: #69f0ae; }
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    border-radius: 2px;
+  }
+  input[type=range].x::-webkit-slider-thumb { background: #ff5252; }
+  input[type=range].y::-webkit-slider-thumb { background: var(--accent); }
+  input[type=range].z::-webkit-slider-thumb { background: #69f0ae; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+  .slider-val {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    width: 40px;
+    text-align: right;
+    color: var(--muted);
+  }
+
+  /* mode buttons */
+  .mode-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .mode-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.7rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active, .mode-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  /* speed */
+  .speed-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .speed-btn {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .speed-btn.active, .speed-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .auto-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 0.5rem;
+  }
+  .auto-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .toggle {
+    position: relative; width: 42px; height: 22px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0;
+    background: var(--border);
+    border-radius: 22px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 3px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: 0.3s;
+  }
+  .toggle input:checked + .toggle-slider { background: rgba(0,229,255,0.3); }
+  .toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+    background: var(--accent);
+  }
+
+  /* ── VIEWS STRIP ── */
+  .views-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-top: 3rem;
+  }
+  .view-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .view-card:hover { border-color: var(--accent); }
+  .view-canvas-wrap { height: 160px; position: relative; }
+  .view-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 0.7rem 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    transition: color 0.2s;
+  }
+  .view-card:hover .view-label { color: var(--accent); }
+
+  /* ── ROTATION EXPLAIN ── */
+  #rotation {
+    background: var(--bg);
+  }
+  .rotation-intro {
+    max-width: 700px;
+    margin-bottom: 4rem;
+  }
+  .rotation-intro p {
+    color: var(--muted);
+    line-height: 1.75;
+    font-size: 1rem;
+    margin-top: 1rem;
+  }
+
+  .axes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+  .axis-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .axis-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .axis-card.ax { border-color: rgba(255,82,82,0.3); }
+  .axis-card.ax::before { background: #ff5252; }
+  .axis-card.ay { border-color: rgba(0,229,255,0.3); }
+  .axis-card.ay::before { background: var(--accent); }
+  .axis-card.az { border-color: rgba(105,240,174,0.3); }
+  .axis-card.az::before { background: #69f0ae; }
+  .axis-card:hover { border-color: rgba(255,255,255,0.2); }
+
+  .axis-icon {
+    font-family: var(--display);
+    font-size: 4rem;
+    line-height: 1;
+    margin-bottom: 1rem;
+    opacity: 0.15;
+    position: absolute;
+    right: 1.5rem; top: 1rem;
+  }
+  .axis-card.ax .axis-icon { color: #ff5252; }
+  .axis-card.ay .axis-icon { color: var(--accent); }
+  .axis-card.az .axis-icon { color: #69f0ae; }
+  .axis-name {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+  }
+  .axis-card.ax .axis-name { color: #ff5252; }
+  .axis-card.ay .axis-name { color: var(--accent); }
+  .axis-card.az .axis-name { color: #69f0ae; }
+  .axis-subtitle {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .axis-desc {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* matrix display */
+  .matrix-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+  .matrix-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+  }
+  .matrix-block-title {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .matrix {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    line-height: 2;
+    color: var(--text);
+    white-space: pre;
+  }
+  .matrix .hi { color: var(--accent2); }
+  .matrix .ax { color: #ff5252; }
+  .matrix .ay { color: var(--accent); }
+  .matrix .az { color: #69f0ae; }
+
+  /* quaternion */
+  .quaternion-card {
+    background: linear-gradient(135deg, var(--card) 0%, rgba(179,136,255,0.05) 100%);
+    border: 1px solid rgba(179,136,255,0.25);
+    padding: 2.5rem;
+    margin-bottom: 4rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  .quaternion-title {
+    font-family: var(--display);
+    font-size: 2.5rem;
+    letter-spacing: 0.05em;
+    color: var(--accent3);
+    margin-bottom: 0.8rem;
+  }
+  .quaternion-desc {
+    font-size: 0.95rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .quaternion-formula {
+    background: var(--bg);
+    border: 1px solid rgba(179,136,255,0.2);
+    padding: 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 2;
+    color: var(--text);
+  }
+  .quaternion-formula .hi { color: var(--accent3); }
+
+  /* gimbal lock */
+  .gimbal-card {
+    background: rgba(255,61,113,0.05);
+    border: 1px solid rgba(255,61,113,0.2);
+    padding: 2rem;
+    margin-bottom: 4rem;
+    display: flex; align-items: flex-start; gap: 2rem;
+  }
+  .gimbal-icon {
+    font-family: var(--display);
+    font-size: 4rem;
+    color: var(--accent2);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .gimbal-title {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    color: var(--accent2);
+    margin-bottom: 0.5rem;
+  }
+  .gimbal-desc {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* properties table */
+  .props-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 4rem;
+  }
+  .props-table th {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: left;
+    padding: 1rem 1.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    font-weight: 400;
+  }
+  .props-table td {
+    font-size: 0.88rem;
+    color: var(--text);
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--border);
+    line-height: 1.5;
+  }
+  .props-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .tag-pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  /* ── INTERACTIVE ROTATION DEMO ── */
+  #rot-demo {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .rot-demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  #rotDemoCanvas { display: block; }
+  .rot-controls { display: flex; flex-direction: column; gap: 1.5rem; }
+  .rot-formula {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.9;
+    color: var(--muted);
+  }
+  .rot-formula span { color: var(--text); }
+  .rot-formula .hi { color: var(--accent); }
+  .axis-speed-controls { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  /* ── APPLICATIONS ── */
+  #applications {
+    background: var(--bg);
+  }
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
+  .app-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .app-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .app-num {
+    font-family: var(--display);
+    font-size: 3rem;
+    color: var(--border);
+    line-height: 1;
+    margin-bottom: 1rem;
+  }
+  .app-title {
+    font-family: var(--display);
+    font-size: 1.4rem;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    margin-bottom: 0.6rem;
+  }
+  .app-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.65; }
+
+  /* ── CONCLUSION ── */
+  #conclusion {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .conclusion-visual {
+    height: 300px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    margin: 3rem 0;
+  }
+  #conclusionCanvas { display: block; }
+  .conclusion-text {
+    max-width: 640px;
+    margin: 0 auto;
+    font-size: 1rem;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+  .key-takeaway {
+    margin-top: 3rem;
+    padding: 2.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    text-align: left;
+    max-width: 700px;
+    margin-left: auto; margin-right: auto;
+  }
+  .key-takeaway-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+  .key-takeaway-text {
+    font-size: 0.95rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 2rem 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer-logo {
+    font-family: var(--display);
+    font-size: 1.3rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+  }
+  .footer-copy {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    #hero { grid-template-columns: 1fr; padding-top: 6rem; }
+    #hero-canvas-wrap { height: 380px; }
+    .analyser-grid { grid-template-columns: 1fr; }
+    .axes-grid { grid-template-columns: 1fr; }
+    .matrix-section { grid-template-columns: 1fr; }
+    .quaternion-card { grid-template-columns: 1fr; }
+    .apps-grid { grid-template-columns: 1fr 1fr; }
+    .rot-demo-grid { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: 1fr 1fr; }
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    section { padding: 4rem 1.5rem; }
+    .views-strip { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">3D·BODY</a>
+  <ul class="nav-links">
+    <li><a href="#analyser">Analyser</a></li>
+    <li><a href="#rotation">Rotation</a></li>
+    <li><a href="#rot-demo">Demo</a></li>
+    <li><a href="#applications">Applications</a></li>
+    <li><a href="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-left">
+    <div class="hero-tag">Human Body · 3D Analysis</div>
+    <h1 class="hero-title">3D HUMAN <em>BODY</em> ANALYSIS</h1>
+    <p class="hero-sub">
+      An interactive 360° human form viewer powered by real-time WebGL. Drag to rotate, analyse anatomy from every angle, and explore the mathematics of 3D rotation transformation.
+    </p>
+    <a href="#analyser" class="hero-cta">Launch Analyser →</a>
+  </div>
+
+  <div id="hero-canvas-wrap">
+    <canvas id="heroCanvas" width="480" height="540"></canvas>
+    <span class="canvas-label">↺ Drag to rotate 360°</span>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num">360°</div><div class="stat-label">Full Rotation</div></div>
+  <div class="stat-item"><div class="stat-num">3</div><div class="stat-label">Rotation Axes</div></div>
+  <div class="stat-item"><div class="stat-num">4×4</div><div class="stat-label">Matrix Form</div></div>
+  <div class="stat-item"><div class="stat-num">60</div><div class="stat-label">FPS Target</div></div>
+</div>
+
+<!-- ANALYSER -->
+<section id="analyser">
+  <div class="section-tag">Interactive</div>
+  <h2 class="section-title">3D BODY <em>ANALYSER</em></h2>
+  <p style="color:var(--muted);margin-bottom:2.5rem;max-width:560px;">Drag the model to rotate freely in 360°. Use sliders to set precise rotation angles. Toggle auto-spin to observe continuous motion.</p>
+
+  <div class="analyser-grid">
+    <div>
+      <div class="viewer-wrap">
+        <canvas id="viewerCanvas" width="680" height="580"></canvas>
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        <div class="viewer-overlay-tl">3D·BODY · ANALYSER v1.0</div>
+        <div class="viewer-overlay-br" id="rotReadout">X:0° Y:0° Z:0°</div>
+      </div>
+
+      <!-- MULTI-VIEW STRIP -->
+      <div class="views-strip">
+        <div class="view-card" onclick="setView('front')">
+          <div class="view-canvas-wrap"><canvas class="miniCanvas" id="mc0" width="200" height="160"></canvas></div>
+          <div class="view-label">Front View</div>
+        </div>
+        <div class="view-card" onclick="setView('side')">
+          <div class="view-canvas-wrap"><canvas class="miniCanvas" id="mc1" width="200" height="160"></canvas></div>
+          <div class="view-label">Side View</div>
+        </div>
+        <div class="view-card" onclick="setView('back')">
+          <div class="view-canvas-wrap"><canvas class="miniCanvas" id="mc2" width="200" height="160"></canvas></div>
+          <div class="view-label">Back View</div>
+        </div>
+        <div class="view-card" onclick="setView('top')">
+          <div class="view-canvas-wrap"><canvas class="miniCanvas" id="mc3" width="200" height="160"></canvas></div>
+          <div class="view-label">Top View</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls-panel">
+      <div class="panel-card">
+        <div class="panel-title">Live Rotation Angles</div>
+        <div class="angle-display">
+          <div class="angle-box x"><span class="angle-axis">X · Pitch</span><span class="angle-val" id="angX">0°</span></div>
+          <div class="angle-box y"><span class="angle-axis">Y · Yaw</span><span class="angle-val" id="angY">0°</span></div>
+          <div class="angle-box z"><span class="angle-axis">Z · Roll</span><span class="angle-val" id="angZ">0°</span></div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">Manual Rotation Control</div>
+        <div class="slider-row">
+          <span class="slider-label x">X</span>
+          <input type="range" id="slX" class="x" min="-180" max="180" value="0">
+          <span class="slider-val" id="svX">0°</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label y">Y</span>
+          <input type="range" id="slY" class="y" min="-180" max="180" value="0">
+          <span class="slider-val" id="svY">0°</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label z">Z</span>
+          <input type="range" id="slZ" class="z" min="-180" max="180" value="0">
+          <span class="slider-val" id="svZ">0°</span>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">View Mode</div>
+        <div class="mode-btns">
+          <button class="mode-btn active" onclick="setMode('solid',this)">Solid</button>
+          <button class="mode-btn" onclick="setMode('wire',this)">Wireframe</button>
+          <button class="mode-btn" onclick="setMode('skeleton',this)">Skeleton</button>
+          <button class="mode-btn" onclick="setMode('xray',this)">X-Ray</button>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">Auto-Spin Speed</div>
+        <div class="speed-btns">
+          <button class="speed-btn" onclick="setSpeed(0,this)">OFF</button>
+          <button class="speed-btn active" onclick="setSpeed(0.005,this)">×1</button>
+          <button class="speed-btn" onclick="setSpeed(0.01,this)">×2</button>
+          <button class="speed-btn" onclick="setSpeed(0.02,this)">×4</button>
+        </div>
+        <div class="auto-row" style="margin-top:1rem">
+          <span class="auto-label">Multi-Axis Spin</span>
+          <label class="toggle">
+            <input type="checkbox" id="multiAxisToggle" onchange="toggleMultiAxis(this)">
+            <div class="toggle-slider"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">Reset & Presets</div>
+        <div class="mode-btns">
+          <button class="mode-btn" onclick="resetRotation()">Reset</button>
+          <button class="mode-btn" onclick="applyPreset(45,-30,0)">Diagonal</button>
+          <button class="mode-btn" onclick="applyPreset(0,180,0)">Back</button>
+          <button class="mode-btn" onclick="applyPreset(-90,0,0)">Top</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROTATION EXPLANATION -->
+<section id="rotation">
+  <div class="section-tag">Mathematics</div>
+  <h2 class="section-title">ROTATION <em>TRANSFORMATION</em></h2>
+
+  <div class="rotation-intro">
+    <p>Rotation transformation is a fundamental operation in 3D computer graphics that changes the <em style="color:var(--text)">orientation</em> of an object in space without altering its shape or size. Every pixel you see in a 3D rendered scene has been processed through rotation matrices hundreds of times per frame.</p>
+    <p style="margin-top:1rem;">In three-dimensional space, rotation is performed around one of three principal axes — <span style="color:#ff5252">X (Pitch)</span>, <span style="color:var(--accent)">Y (Yaw)</span>, and <span style="color:#69f0ae">Z (Roll)</span> — or a combination of all three using Euler angles or Quaternions.</p>
+  </div>
+
+  <!-- THREE AXES -->
+  <div class="axes-grid">
+    <div class="axis-card ax">
+      <div class="axis-icon">X</div>
+      <div class="axis-name">X-AXIS</div>
+      <div class="axis-subtitle">Pitch · Nodding Motion</div>
+      <p class="axis-desc">Rotation around the horizontal X-axis tilts the object forward or backward — like nodding your head. In human body analysis, pitch controls the lean of the torso. The rotation matrix uses <strong>cos θ</strong> and <strong>sin θ</strong> to transform Y and Z coordinates while keeping X coordinates unchanged.</p>
+    </div>
+    <div class="axis-card ay">
+      <div class="axis-icon">Y</div>
+      <div class="axis-name">Y-AXIS</div>
+      <div class="axis-subtitle">Yaw · Turning Motion</div>
+      <p class="axis-desc">Rotation around the vertical Y-axis spins the object left or right — like turning your head. This is the most commonly used rotation in 3D body viewers, enabling full 360° horizontal inspection. Y-axis rotation transforms X and Z coordinates while keeping Y unchanged.</p>
+    </div>
+    <div class="axis-card az">
+      <div class="axis-icon">Z</div>
+      <div class="axis-name">Z-AXIS</div>
+      <div class="axis-subtitle">Roll · Tilting Motion</div>
+      <p class="axis-desc">Rotation around the depth Z-axis rolls the object clockwise or counterclockwise — like tilting your head sideways. Z-axis rotation transforms X and Y coordinates, keeping Z unchanged. It's frequently used in camera effects and spine-tilt analysis in biomechanics.</p>
+    </div>
+  </div>
+
+  <!-- MATRICES -->
+  <div class="section-tag">Matrix Form</div>
+  <h3 class="section-title" style="font-size:2.5rem;margin-bottom:2rem;">ROTATION <em>MATRICES</em></h3>
+  <div class="matrix-section">
+    <div class="matrix-block">
+      <div class="matrix-block-title" style="color:#ff5252">Rx(θ) — Pitch (X-Axis)</div>
+      <pre class="matrix">
+<span class="hi">[ 1,    0,     0,   0 ]</span>
+[ 0,  <span class="ax">cos θ</span>, <span class="ax">-sin θ</span>, 0 ]
+[ 0,  <span class="ax">sin θ</span>,  <span class="ax">cos θ</span>, 0 ]
+[ 0,    0,     0,   1 ]</pre>
+      <p style="margin-top:1rem;font-size:0.82rem;color:var(--muted);">X coordinate is unchanged. Y and Z are mixed using the rotation angle θ, creating the forward/backward tilt.</p>
+    </div>
+    <div class="matrix-block">
+      <div class="matrix-block-title" style="color:var(--accent)">Ry(θ) — Yaw (Y-Axis)</div>
+      <pre class="matrix">
+[ <span class="ay">cos θ</span>, 0, <span class="ay">sin θ</span>, 0 ]
+[   0,   <span class="hi">1</span>,   0,   0 ]
+[<span class="ay">-sin θ</span>, 0, <span class="ay">cos θ</span>, 0 ]
+[   0,   0,   0,   1 ]</pre>
+      <p style="margin-top:1rem;font-size:0.82rem;color:var(--muted);">Y coordinate is unchanged. X and Z are rotated — this produces the characteristic 360° spin used in body viewers.</p>
+    </div>
+    <div class="matrix-block">
+      <div class="matrix-block-title" style="color:#69f0ae">Rz(θ) — Roll (Z-Axis)</div>
+      <pre class="matrix">
+[<span class="az">cos θ</span>, <span class="az">-sin θ</span>, 0, 0 ]
+[<span class="az">sin θ</span>,  <span class="az">cos θ</span>, 0, 0 ]
+[  0,     0,    <span class="hi">1</span>, 0 ]
+[  0,     0,    0, 1 ]</pre>
+      <p style="margin-top:1rem;font-size:0.82rem;color:var(--muted);">Z coordinate is unchanged. X and Y are rotated — produces the lateral roll or tilt around the depth axis.</p>
+    </div>
+  </div>
+
+  <!-- QUATERNIONS -->
+  <div class="quaternion-card">
+    <div>
+      <div class="section-tag" style="margin-bottom:0.8rem">Advanced</div>
+      <div class="quaternion-title">QUATERNION ROTATION</div>
+      <p class="quaternion-desc">
+        While Euler angles (X, Y, Z) are intuitive, they suffer from <em style="color:var(--accent2)">Gimbal Lock</em> — a phenomenon where two rotation axes align and a degree of freedom is lost. Quaternions solve this by representing rotation as a 4-component hypercomplex number, enabling smooth interpolation and stable multi-axis rotation for human body simulation.
+      </p>
+      <p class="quaternion-desc" style="margin-top:1rem;">
+        Three.js (used in this site) internally uses Quaternions for all 3D object rotations, converting from Euler angles when you set rotation values.
+      </p>
+    </div>
+    <div class="quaternion-formula">
+      <div style="color:var(--accent3);margin-bottom:0.8rem;letter-spacing:0.1em;">QUATERNION FORM</div>
+      q = w + xi + yj + zk
+
+      w = <span class="hi">cos(θ/2)</span>
+      x = <span class="hi">ax · sin(θ/2)</span>
+      y = <span class="hi">ay · sin(θ/2)</span>
+      z = <span class="hi">az · sin(θ/2)</span>
+
+      <div style="color:var(--accent3);margin-top:0.8rem;">SLERP Interpolation</div>
+      Slerp(q1,q2,t) =
+        q1 · <span class="hi">sin((1-t)Ω)</span> / sin(Ω)
+      + q2 · <span class="hi">sin(tΩ)</span> / sin(Ω)
+    </div>
+  </div>
+
+  <!-- GIMBAL -->
+  <div class="gimbal-card">
+    <div class="gimbal-icon">⚠</div>
+    <div>
+      <div class="gimbal-title">GIMBAL LOCK</div>
+      <p class="gimbal-desc">
+        Gimbal Lock occurs when two of the three rotation axes align, causing the system to lose one degree of freedom. For example, when the X-axis pitch reaches ±90°, the Y-axis yaw and Z-axis roll become equivalent — making one rotation axis redundant. This is a critical limitation of Euler angle rotation and the primary reason quaternion rotation is used in game engines, animation software, and this 3D body analyser.
+      </p>
+    </div>
+  </div>
+
+  <!-- PROPERTIES TABLE -->
+  <div class="section-tag">Reference</div>
+  <h3 class="section-title" style="font-size:2rem;margin-bottom:1.5rem;">ROTATION <em>PROPERTIES</em></h3>
+  <table class="props-table">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Description</th>
+        <th>Impact on Body</th>
+        <th>Type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Orthogonality</strong></td>
+        <td>Rotation matrices are orthogonal — their transpose equals their inverse. R⁻¹ = Rᵀ</td>
+        <td>Shape and volume of the body model are always preserved</td>
+        <td><span class="tag-pill">Geometric</span></td>
+      </tr>
+      <tr>
+        <td><strong>Determinant = 1</strong></td>
+        <td>The determinant of any rotation matrix is always exactly 1 (proper rotation)</td>
+        <td>No scaling or reflection occurs during any rotation</td>
+        <td><span class="tag-pill">Algebraic</span></td>
+      </tr>
+      <tr>
+        <td><strong>Non-commutativity</strong></td>
+        <td>Rx·Ry ≠ Ry·Rx — rotation order matters significantly</td>
+        <td>The sequence of pitch-yaw-roll produces different final poses</td>
+        <td><span class="tag-pill">Order-Dependent</span></td>
+      </tr>
+      <tr>
+        <td><strong>Composability</strong></td>
+        <td>Multiple rotations combine by matrix multiplication into a single 4×4 matrix</td>
+        <td>Complex body poses are computed with a single matrix per vertex</td>
+        <td><span class="tag-pill">Composite</span></td>
+      </tr>
+      <tr>
+        <td><strong>Angle Preservation</strong></td>
+        <td>Rotation preserves all angles between vectors in the object</td>
+        <td>Joint angles and body proportions remain anatomically accurate</td>
+        <td><span class="tag-pill">Isometric</span></td>
+      </tr>
+      <tr>
+        <td><strong>Distance Preservation</strong></td>
+        <td>All distances between points are preserved (isometry)</td>
+        <td>Height, width, and limb lengths are constant regardless of view angle</td>
+        <td><span class="tag-pill">Isometric</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- INTERACTIVE ROTATION DEMO -->
+<section id="rot-demo">
+  <div class="section-tag">Live Demo</div>
+  <h2 class="section-title">ROTATION <em>IN ACTION</em></h2>
+  <p style="color:var(--muted);margin-bottom:2.5rem;max-width:560px;">Watch rotation matrices applied in real-time on a 3D figure. Control each axis speed independently to observe how Pitch, Yaw, and Roll interact.</p>
+
+  <div class="rot-demo-grid">
+    <div style="position:relative;background:var(--card);border:1px solid var(--border);">
+      <canvas id="rotDemoCanvas" width="540" height="480"></canvas>
+      <div style="position:absolute;top:1rem;left:1rem;font-family:var(--mono);font-size:0.6rem;color:var(--accent);letter-spacing:0.15em;opacity:0.6;">ROTATION·MATRIX·DEMO</div>
+    </div>
+
+    <div class="rot-controls">
+      <div class="panel-card">
+        <div class="panel-title">Per-Axis Rotation Speed</div>
+        <div class="axis-speed-controls">
+          <div class="slider-row">
+            <span class="slider-label x">X</span>
+            <input type="range" id="demoSX" class="x" min="-5" max="5" value="0" step="0.5">
+            <span class="slider-val" id="demoVX">0</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label y">Y</span>
+            <input type="range" id="demoSY" class="y" min="-5" max="5" value="2" step="0.5">
+            <span class="slider-val" id="demoVY">2</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label z">Z</span>
+            <input type="range" id="demoSZ" class="z" min="-5" max="5" value="0" step="0.5">
+            <span class="slider-val" id="demoVZ">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rot-formula" id="liveFormula">
+        <div style="color:var(--accent);margin-bottom:0.5rem;letter-spacing:0.1em;">CURRENT TRANSFORM</div>
+        Ry(<span class="hi" id="fAngle">0.00</span>°) applied to:
+
+        [ <span id="f00">1.00</span>,  <span id="f01">0.00</span>, 0, 0 ]
+        [ 0.00,  1.00, 0, 0 ]
+        [ <span id="f20">0.00</span>,  <span id="f22">1.00</span>, 0, 0 ]
+        [ 0.00,  0.00, 0, 1 ]
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">What You're Seeing</div>
+        <p style="font-size:0.85rem;color:var(--muted);line-height:1.7;">
+          Each frame, the rotation matrix Ry(θ) is multiplied with the object's vertex positions. As θ increases, the figure rotates. The matrix values update live — notice <strong style="color:var(--text)">cos θ → 1</strong> when facing front, and <strong style="color:var(--text)">cos θ → -1</strong> when facing back (180°).
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APPLICATIONS -->
+<section id="applications">
+  <div class="section-tag">Real-World</div>
+  <h2 class="section-title">APPLICATIONS OF <em>3D ROTATION</em></h2>
+  <div class="apps-grid">
+    <div class="app-card">
+      <div class="app-num">01</div>
+      <div class="app-title">MEDICAL IMAGING</div>
+      <p class="app-desc">CT scans and MRIs use 3D rotation to let doctors view anatomy from any angle. Surgical planning software rotates bone and organ models to plan incisions with sub-millimetre accuracy.</p>
+    </div>
+    <div class="app-card">
+      <div class="app-num">02</div>
+      <div class="app-title">BIOMECHANICS</div>
+      <p class="app-desc">Gait analysis systems use 3D rotation matrices to track joint angles in real-time. Athletes use this to optimise movement efficiency and prevent injuries through precise angle analysis.</p>
+    </div>
+    <div class="app-card">
+      <div class="app-num">03</div>
+      <div class="app-title">VIRTUAL REALITY</div>
+      <p class="app-desc">Head-mounted displays read IMU sensor data and apply rotation quaternions 90 times per second to update the virtual viewpoint. Euler angles cannot keep up — quaternion rotation is essential.</p>
+    </div>
+    <div class="app-card">
+      <div class="app-num">04</div>
+      <div class="app-title">ANIMATION & FILM</div>
+      <p class="app-desc">Character rigging uses hierarchical rotation matrices — rotating a shoulder automatically rotates the arm and hand. Hollywood VFX pipelines process millions of rotation matrices per frame.</p>
+    </div>
+    <div class="app-card">
+      <div class="app-num">05</div>
+      <div class="app-title">FASHION & E-COMMERCE</div>
+      <p class="app-desc">3D body scanners rotate digital mannequins to preview clothing from every angle before physical production. Virtual try-on systems use real-time rotation for accurate drape simulation.</p>
+    </div>
+    <div class="app-card">
+      <div class="app-num">06</div>
+      <div class="app-title">ROBOTICS & AI</div>
+      <p class="app-desc">Robot arms compute inverse kinematics using rotation matrices to reach any target position. Pose estimation AI (like MediaPipe) predicts 3D joint rotations from 2D camera images.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CONCLUSION -->
+<section id="conclusion">
+  <div class="section-tag">Summary</div>
+  <h2 class="section-title">CONCLUSION</h2>
+
+  <div class="conclusion-visual">
+    <canvas id="conclusionCanvas" width="800" height="280"></canvas>
+  </div>
+
+  <p class="conclusion-text">
+    This project demonstrates that 3D rotation transformation is far more than a visual effect — it is the mathematical engine powering every 3D application, from the model you've been rotating above to Hollywood VFX and surgical robotics. By understanding the rotation matrices for X, Y, and Z axes, and their composition into quaternions, we gain the tools to represent and manipulate any orientation in three-dimensional space with complete precision.
+  </p>
+
+  <div class="key-takeaway">
+    <div class="key-takeaway-label">Key Takeaway</div>
+    <p class="key-takeaway-text">
+      Rotation matrices are orthogonal, determinant-1 linear transformations that preserve shape, size, and distance. Combined as 4×4 homogeneous matrices and composed via multiplication, they are the mathematical backbone of every 3D graphics pipeline — from this browser-based body viewer to the GPUs rendering billion-triangle worlds in real-time.
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">3D·BODY</div>
+  <div class="footer-copy">© 2026 · 3D Human Body Analysis · Three.js · WebGL · Rotation Transformation</div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════
+   THREE.JS SCENES
+═══════════════════════════════════════════════ */
+
+// Helper: build a humanoid group
+function buildHumanoid(THREE, mode) {
+  const g = new THREE.Group();
+
+  const mats = {
+    solid: new THREE.MeshPhongMaterial({ color: 0xb0bec5, shininess: 60, specular: 0x00e5ff }),
+    wire: new THREE.MeshPhongMaterial({ color: 0x00e5ff, wireframe: true }),
+    skeleton: new THREE.MeshBasicMaterial({ color: 0x00e5ff, wireframe: true }),
+    xray: new THREE.MeshPhongMaterial({ color: 0x80cbc4, transparent: true, opacity: 0.35, shininess: 120, specular: 0xffffff }),
+  };
+
+  const mat = (m) => (mats[m] || mats.solid).clone();
+  const M = mat(mode || 'solid');
+
+  const add = (geo, x, y, z) => {
+    const m = new THREE.Mesh(geo, M);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  };
+
+  // Head
+  add(new THREE.SphereGeometry(0.22, 20, 20), 0, 2.15, 0);
+  // Neck
+  add(new THREE.CylinderGeometry(0.09, 0.09, 0.2, 12), 0, 1.95, 0);
+  // Torso
+  const torso = add(new THREE.CylinderGeometry(0.18, 0.22, 0.85, 16), 0, 1.42, 0);
+  // Hip
+  add(new THREE.CylinderGeometry(0.22, 0.20, 0.32, 16), 0, 0.94, 0);
+  // Pelvis
+  add(new THREE.SphereGeometry(0.22, 14, 10), 0, 0.82, 0);
+
+  // Shoulders
+  add(new THREE.SphereGeometry(0.1, 12, 12), -0.45, 1.72, 0);
+  add(new THREE.SphereGeometry(0.1, 12, 12), 0.45, 1.72, 0);
+  // Collar bones
+  add(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 8), -0.22, 1.8, 0).rotation.z = Math.PI / 2;
+  add(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 8), 0.22, 1.8, 0).rotation.z = Math.PI / 2;
+
+  // Upper arms
+  add(new THREE.CylinderGeometry(0.07, 0.065, 0.46, 12), -0.52, 1.46, 0);
+  add(new THREE.CylinderGeometry(0.07, 0.065, 0.46, 12), 0.52, 1.46, 0);
+  // Elbows
+  add(new THREE.SphereGeometry(0.075, 10, 10), -0.52, 1.22, 0);
+  add(new THREE.SphereGeometry(0.075, 10, 10), 0.52, 1.22, 0);
+  // Forearms
+  add(new THREE.CylinderGeometry(0.055, 0.05, 0.42, 12), -0.52, 0.98, 0);
+  add(new THREE.CylinderGeometry(0.055, 0.05, 0.42, 12), 0.52, 0.98, 0);
+  // Hands
+  add(new THREE.BoxGeometry(0.1, 0.14, 0.05), -0.52, 0.72, 0);
+  add(new THREE.BoxGeometry(0.1, 0.14, 0.05), 0.52, 0.72, 0);
+
+  // Upper legs
+  add(new THREE.CylinderGeometry(0.12, 0.1, 0.54, 14), -0.18, 0.44, 0);
+  add(new THREE.CylinderGeometry(0.12, 0.1, 0.54, 14), 0.18, 0.44, 0);
+  // Knees
+  add(new THREE.SphereGeometry(0.11, 10, 10), -0.18, 0.15, 0);
+  add(new THREE.SphereGeometry(0.11, 10, 10), 0.18, 0.15, 0);
+  // Lower legs
+  add(new THREE.CylinderGeometry(0.08, 0.06, 0.54, 12), -0.18, -0.15, 0);
+  add(new THREE.CylinderGeometry(0.08, 0.06, 0.54, 12), 0.18, -0.15, 0);
+  // Ankles
+  add(new THREE.SphereGeometry(0.07, 10, 10), -0.18, -0.44, 0);
+  add(new THREE.SphereGeometry(0.07, 10, 10), 0.18, -0.44, 0);
+  // Feet
+  add(new THREE.BoxGeometry(0.12, 0.06, 0.22), -0.18, -0.54, 0.06);
+  add(new THREE.BoxGeometry(0.12, 0.06, 0.22), 0.18, -0.54, 0.06);
+
+  return g;
+}
+
+/* ─── HERO SCENE ─── */
+(function () {
+  const canvas = document.getElementById('heroCanvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(480, 540);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 480 / 540, 0.1, 100);
+  camera.position.set(0, 1.2, 4.5);
+  camera.lookAt(0, 1, 0);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x223355, 0.8));
+  const dl = new THREE.DirectionalLight(0x00e5ff, 1.2);
+  dl.position.set(2, 4, 3);
+  scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xff3d71, 0.4);
+  dl2.position.set(-3, 0, -2);
+  scene.add(dl2);
+
+  const human = buildHumanoid(THREE, 'solid');
+  scene.add(human);
+
+  // Drag
+  let isDragging = false, prevX = 0, prevY = 0;
+  canvas.addEventListener('mousedown', e => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+  window.addEventListener('mouseup', () => isDragging = false);
+  canvas.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevX, dy = e.clientY - prevY;
+    human.rotation.y += dx * 0.01;
+    human.rotation.x += dy * 0.008;
+    prevX = e.clientX; prevY = e.clientY;
+  });
+  canvas.addEventListener('touchstart', e => { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; });
+  canvas.addEventListener('touchend', () => isDragging = false);
+  canvas.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const dx = e.touches[0].clientX - prevX, dy = e.touches[0].clientY - prevY;
+    human.rotation.y += dx * 0.01;
+    human.rotation.x += dy * 0.008;
+    prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+  });
+
+  let autoSpin = true;
+  function animate() {
+    requestAnimationFrame(animate);
+    if (!isDragging) human.rotation.y += 0.007;
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+
+/* ─── MAIN ANALYSER SCENE ─── */
+let analyserHuman, analyserRenderer, analyserScene, analyserCamera;
+let analyserRotX = 0, analyserRotY = 0, analyserRotZ = 0;
+let analyserAutoSpeed = 0.005;
+let analyserMultiAxis = false;
+let viewerMode = 'solid';
+
+(function () {
+  const canvas = document.getElementById('viewerCanvas');
+  analyserRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  analyserRenderer.setSize(680, 580);
+  analyserRenderer.setPixelRatio(window.devicePixelRatio);
+  analyserRenderer.shadowMap.enabled = true;
+
+  analyserScene = new THREE.Scene();
+  analyserCamera = new THREE.PerspectiveCamera(48, 680 / 580, 0.1, 100);
+  analyserCamera.position.set(0, 1.2, 5);
+  analyserCamera.lookAt(0, 0.8, 0);
+
+  analyserScene.add(new THREE.AmbientLight(0x334455, 0.9));
+  const dl = new THREE.DirectionalLight(0x00e5ff, 1.4);
+  dl.position.set(3, 5, 4);
+  analyserScene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
+  dl2.position.set(-2, 2, -3);
+  analyserScene.add(dl2);
+  const pl = new THREE.PointLight(0xb388ff, 0.5, 8);
+  pl.position.set(0, 3, 2);
+  analyserScene.add(pl);
+
+  // Grid
+  const gridHelper = new THREE.GridHelper(6, 12, 0x00e5ff, 0x111827);
+  gridHelper.position.y = -0.7;
+  analyserScene.add(gridHelper);
+
+  analyserHuman = buildHumanoid(THREE, 'solid');
+  analyserScene.add(analyserHuman);
+
+  // Axis lines
+  const axisGeo = (from, to, color) => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...from), new THREE.Vector3(...to)]);
+    const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color }));
+    analyserScene.add(l);
+  };
+  axisGeo([-3,0,0],[3,0,0], 0xff5252);
+  axisGeo([0,-1,0],[0,3.5,0], 0x00e5ff);
+  axisGeo([0,0,-3],[0,0,3], 0x69f0ae);
+
+  // Drag
+  let isDragging = false, prevX = 0, prevY = 0;
+  canvas.addEventListener('mousedown', e => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+  window.addEventListener('mouseup', () => isDragging = false);
+  canvas.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevX, dy = e.clientY - prevY;
+    analyserRotY += dx * 0.012;
+    analyserRotX += dy * 0.008;
+    prevX = e.clientX; prevY = e.clientY;
+    syncSliders();
+  });
+  canvas.addEventListener('touchstart', e => { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', () => isDragging = false);
+  canvas.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const dx = e.touches[0].clientX - prevX, dy = e.touches[0].clientY - prevY;
+    analyserRotY += dx * 0.012;
+    analyserRotX += dy * 0.008;
+    prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+    syncSliders();
+    e.preventDefault();
+  }, { passive: false });
+
+  function syncSliders() {
+    const toDeg = r => Math.round(((r * 180 / Math.PI) % 360 + 360) % 360 - 180);
+    document.getElementById('slX').value = toDeg(analyserRotX);
+    document.getElementById('slY').value = toDeg(analyserRotY);
+    document.getElementById('slZ').value = toDeg(analyserRotZ);
+    updateDisplays();
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (!isDragging) {
+      analyserRotY += analyserAutoSpeed;
+      if (analyserMultiAxis) {
+        analyserRotX += analyserAutoSpeed * 0.3;
+        analyserRotZ += analyserAutoSpeed * 0.15;
+      }
+      syncSliders();
+    }
+    analyserHuman.rotation.set(analyserRotX, analyserRotY, analyserRotZ);
+    // Update readout
+    const toDeg = r => ((Math.round(r * 180 / Math.PI) % 360 + 360) % 360);
+    document.getElementById('rotReadout').textContent =
+      `X:${toDeg(analyserRotX)}° Y:${toDeg(analyserRotY)}° Z:${toDeg(analyserRotZ)}°`;
+    analyserRenderer.render(analyserScene, analyserCamera);
+  }
+  animate();
+})();
+
+function updateDisplays() {
+  const toDeg = id => {
+    const v = parseInt(document.getElementById(id).value);
+    return v;
+  };
+  const x = toDeg('slX'), y = toDeg('slY'), z = toDeg('slZ');
+  document.getElementById('svX').textContent = x + '°';
+  document.getElementById('svY').textContent = y + '°';
+  document.getElementById('svZ').textContent = z + '°';
+  document.getElementById('angX').textContent = x + '°';
+  document.getElementById('angY').textContent = y + '°';
+  document.getElementById('angZ').textContent = z + '°';
+}
+
+['slX','slY','slZ'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    analyserRotX = parseFloat(document.getElementById('slX').value) * Math.PI / 180;
+    analyserRotY = parseFloat(document.getElementById('slY').value) * Math.PI / 180;
+    analyserRotZ = parseFloat(document.getElementById('slZ').value) * Math.PI / 180;
+    updateDisplays();
+  });
+});
+
+function setMode(mode, btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  viewerMode = mode;
+  // Rebuild humanoid with new mode
+  analyserScene.remove(analyserHuman);
+  analyserHuman = buildHumanoid(THREE, mode);
+  analyserScene.add(analyserHuman);
+}
+function setSpeed(spd, btn) {
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  analyserAutoSpeed = spd;
+}
+function toggleMultiAxis(el) { analyserMultiAxis = el.checked; }
+function resetRotation() {
+  analyserRotX = analyserRotY = analyserRotZ = 0;
+  document.getElementById('slX').value = 0;
+  document.getElementById('slY').value = 0;
+  document.getElementById('slZ').value = 0;
+  updateDisplays();
+}
+function applyPreset(x, y, z) {
+  analyserRotX = x * Math.PI / 180;
+  analyserRotY = y * Math.PI / 180;
+  analyserRotZ = z * Math.PI / 180;
+  document.getElementById('slX').value = x;
+  document.getElementById('slY').value = y;
+  document.getElementById('slZ').value = z;
+  updateDisplays();
+}
+function setView(v) {
+  const views = { front:[0,0,0], side:[0,Math.PI/2,0], back:[0,Math.PI,0], top:[-Math.PI/2,0,0] };
+  const r = views[v];
+  analyserRotX = r[0]; analyserRotY = r[1]; analyserRotZ = r[2];
+  document.getElementById('slX').value = Math.round(r[0]*180/Math.PI);
+  document.getElementById('slY').value = Math.round(r[1]*180/Math.PI);
+  document.getElementById('slZ').value = Math.round(r[2]*180/Math.PI);
+  updateDisplays();
+}
+
+/* ─── MINI VIEW CANVASES ─── */
+[
+  { id: 'mc0', rx: 0, ry: 0, rz: 0 },
+  { id: 'mc1', rx: 0, ry: Math.PI/2, rz: 0 },
+  { id: 'mc2', rx: 0, ry: Math.PI, rz: 0 },
+  { id: 'mc3', rx: -Math.PI/2, ry: 0, rz: 0 },
+].forEach(cfg => {
+  const canvas = document.getElementById(cfg.id);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(200, 160);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, 200/160, 0.1, 50);
+  camera.position.set(0, 1, 3.5);
+  camera.lookAt(0, 0.8, 0);
+  scene.add(new THREE.AmbientLight(0x334455, 0.8));
+  const dl = new THREE.DirectionalLight(0x00e5ff, 1.2);
+  dl.position.set(2, 4, 3);
+  scene.add(dl);
+  const h = buildHumanoid(THREE, 'solid');
+  h.rotation.set(cfg.rx, cfg.ry, cfg.rz);
+  scene.add(h);
+  (function loop() {
+    requestAnimationFrame(loop);
+    renderer.render(scene, camera);
+  })();
+});
+
+/* ─── ROT DEMO SCENE ─── */
+(function () {
+  const canvas = document.getElementById('rotDemoCanvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(540, 480);
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 540/480, 0.1, 100);
+  camera.position.set(0, 1.2, 5.5);
+  camera.lookAt(0, 0.8, 0);
+
+  scene.add(new THREE.AmbientLight(0x223344, 0.8));
+  const dl = new THREE.DirectionalLight(0xb388ff, 1.2);
+  dl.position.set(2, 4, 3);
+  scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xff3d71, 0.3);
+  dl2.position.set(-3, 0, -2);
+  scene.add(dl2);
+
+  const grid = new THREE.GridHelper(6, 10, 0x1a237e, 0x111827);
+  grid.position.y = -0.7;
+  scene.add(grid);
+
+  const human = buildHumanoid(THREE, 'wire');
+  scene.add(human);
+
+  // Axis lines
+  const al = (from, to, color) => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...from), new THREE.Vector3(...to)]);
+    scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color })));
+  };
+  al([-2.5,0,0],[2.5,0,0], 0xff5252);
+  al([0,-1,0],[0,3.2,0], 0x00e5ff);
+  al([0,0,-2.5],[0,0,2.5], 0x69f0ae);
+
+  let rotX = 0, rotY = 0, rotZ = 0;
+
+  const getSpeeds = () => ({
+    x: parseFloat(document.getElementById('demoSX').value) * 0.005,
+    y: parseFloat(document.getElementById('demoSY').value) * 0.005,
+    z: parseFloat(document.getElementById('demoSZ').value) * 0.005,
+  });
+
+  ['demoSX','demoSY','demoSZ'].forEach((id, i) => {
+    document.getElementById(id).addEventListener('input', function() {
+      ['demoVX','demoVY','demoVZ'][i] && (document.getElementById(['demoVX','demoVY','demoVZ'][i]).textContent = this.value);
+    });
+  });
+
+  function updateFormula(angle) {
+    const a = angle * 180 / Math.PI;
+    const c = Math.cos(angle), s = Math.sin(angle);
+    document.getElementById('fAngle').textContent = a.toFixed(1);
+    document.getElementById('f00').textContent = c.toFixed(2);
+    document.getElementById('f01').textContent = (-s).toFixed(2);
+    document.getElementById('f20').textContent = s.toFixed(2);
+    document.getElementById('f22').textContent = c.toFixed(2);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const spd = getSpeeds();
+    rotX += spd.x; rotY += spd.y; rotZ += spd.z;
+    human.rotation.set(rotX, rotY, rotZ);
+    updateFormula(rotY);
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+
+/* ─── CONCLUSION CANVAS ─── */
+(function () {
+  const canvas = document.getElementById('conclusionCanvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(800, 280);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 800/280, 0.1, 100);
+  camera.position.set(0, 1.5, 7);
+  camera.lookAt(0, 1, 0);
+
+  scene.add(new THREE.AmbientLight(0x334455, 0.8));
+  const dl = new THREE.DirectionalLight(0x00e5ff, 1.2);
+  dl.position.set(2, 5, 4);
+  scene.add(dl);
+
+  // Three figures at different rotations
+  [-2, 0, 2].forEach((x, i) => {
+    const h = buildHumanoid(THREE, 'solid');
+    h.scale.setScalar(0.55);
+    h.position.set(x, -0.3, 0);
+    h.rotation.y = (i - 1) * 1.2;
+    scene.add(h);
+    // Animate
+    (function loop(obj, speed) {
+      requestAnimationFrame(() => loop(obj, speed));
+      obj.rotation.y += speed;
+      renderer.render(scene, camera);
+    })(h, 0.006 + i * 0.002);
+  });
+})();
+</script>
+</body>
+</html>

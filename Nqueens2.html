@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ExamGuard — Anti-Cheating Seat Allocator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:        #08090f;
+  --surface:   #0d0f1a;
+  --card:      #111422;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --gold:      #c9a84c;
+  --gold-light:#e8cb7a;
+  --gold-dim:  rgba(201,168,76,0.15);
+  --gold-glow: rgba(201,168,76,0.35);
+  --navy:      #1a2240;
+  --navy2:     #0f1530;
+  --text:      #e8e4d8;
+  --muted:     #7a7566;
+  --danger:    #c04a3a;
+  --danger-dim:rgba(192,74,58,0.15);
+  --success:   #3a8c5c;
+  --safe-dim:  rgba(58,140,92,0.12);
+  --cell-light:#141830;
+  --cell-dark: #0d1020;
+  --student-bg:#1e2a4a;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html{scroll-behavior:smooth;}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Crimson Pro',Georgia,serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* ── GRAIN OVERLAY ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:9999;
+}
+
+/* ── AMBIENT GLOW ── */
+.ambient{
+  position:fixed;
+  width:600px;height:600px;
+  border-radius:50%;
+  filter:blur(120px);
+  pointer-events:none;
+  z-index:0;
+}
+.ambient-1{top:-200px;left:-200px;background:radial-gradient(circle,rgba(201,168,76,0.06),transparent 70%);}
+.ambient-2{bottom:-200px;right:-200px;background:radial-gradient(circle,rgba(26,34,64,0.4),transparent 70%);}
+
+.wrap{
+  position:relative;z-index:1;
+  max-width:1160px;
+  margin:0 auto;
+  padding:0 28px 60px;
+}
+
+/* ── HEADER ── */
+header{
+  padding:52px 0 40px;
+  text-align:center;
+  position:relative;
+}
+
+.header-rule{
+  width:60px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  margin:0 auto 24px;
+}
+
+.eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.65rem;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  color:var(--gold);
+  margin-bottom:14px;
+  opacity:0.8;
+}
+
+h1{
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:clamp(2.4rem,6vw,4rem);
+  font-weight:900;
+  letter-spacing:-1px;
+  line-height:1.05;
+  color:var(--text);
+  margin-bottom:16px;
+}
+
+h1 em{
+  font-style:italic;
+  color:var(--gold-light);
+}
+
+.subtitle{
+  font-size:1.05rem;
+  color:var(--muted);
+  font-style:italic;
+  max-width:520px;
+  margin:0 auto 12px;
+  line-height:1.6;
+}
+
+.subtitle strong{color:var(--text);font-style:normal;font-weight:600;}
+
+/* ── CONTEXT BANNER ── */
+.context-banner{
+  background:linear-gradient(135deg,rgba(201,168,76,0.06),rgba(26,34,64,0.3));
+  border:1px solid rgba(201,168,76,0.2);
+  border-radius:2px;
+  padding:18px 24px;
+  margin:28px 0 36px;
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+}
+
+.context-icon{
+  font-size:1.4rem;
+  line-height:1;
+  flex-shrink:0;
+  margin-top:2px;
+}
+
+.context-text{
+  font-size:0.92rem;
+  color:var(--muted);
+  line-height:1.7;
+}
+.context-text strong{color:var(--gold-light);font-weight:600;}
+
+/* ── CONTROLS BAR ── */
+.controls{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:32px;
+  padding:20px 24px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-top:1px solid rgba(201,168,76,0.2);
+}
+
+.ctrl-group{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.ctrl-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.6rem;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.ctrl-row{
+  display:flex;
+  gap:4px;
+}
+
+.size-btn{
+  background:var(--surface);
+  color:var(--muted);
+  border:1px solid var(--border);
+  width:34px;height:34px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.8rem;
+  cursor:pointer;
+  transition:all 0.2s;
+  border-radius:2px;
+}
+.size-btn:hover{border-color:var(--gold);color:var(--gold);}
+.size-btn.active{
+  background:var(--gold-dim);
+  border-color:var(--gold);
+  color:var(--gold-light);
+}
+
+.divider{width:1px;background:var(--border);margin:0 8px;align-self:stretch;}
+
+.mode-toggle{
+  display:flex;
+  gap:4px;
+  padding:4px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:2px;
+}
+
+.mode-btn{
+  padding:6px 18px;
+  font-family:'Crimson Pro',serif;
+  font-size:0.88rem;
+  font-weight:600;
+  cursor:pointer;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  border-radius:1px;
+  transition:all 0.25s;
+  letter-spacing:0.5px;
+}
+.mode-btn.active{
+  background:var(--gold);
+  color:var(--bg);
+}
+.mode-btn:hover:not(.active){color:var(--text);}
+
+.spacer{flex:1;}
+
+.action-btn{
+  padding:10px 22px;
+  font-family:'Crimson Pro',serif;
+  font-size:0.95rem;
+  font-weight:600;
+  cursor:pointer;
+  border-radius:2px;
+  transition:all 0.25s;
+  letter-spacing:0.5px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.btn-primary{
+  background:linear-gradient(135deg,var(--gold),#a8893a);
+  color:var(--bg);
+  border:none;
+  box-shadow:0 4px 20px var(--gold-glow);
+}
+.btn-primary:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 28px var(--gold-glow);
+}
+.btn-primary:active{transform:translateY(0);}
+
+.btn-ghost{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--border);
+}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+
+/* ── MAIN LAYOUT ── */
+.main{
+  display:grid;
+  grid-template-columns:1fr 300px;
+  gap:28px;
+  align-items:start;
+}
+@media(max-width:860px){.main{grid-template-columns:1fr;}}
+
+/* ── BOARD ── */
+.board-wrap{
+  background:var(--card);
+  border:1px solid var(--border);
+  padding:28px;
+  position:relative;
+  overflow:hidden;
+}
+
+.board-wrap::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+
+.board-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  margin-bottom:20px;
+}
+
+.board-title{
+  font-family:'Playfair Display',serif;
+  font-size:1.15rem;
+  font-weight:700;
+  color:var(--text);
+}
+
+.board-subtitle{
+  font-size:0.8rem;
+  color:var(--muted);
+  font-style:italic;
+}
+
+/* Status message */
+.status-msg{
+  margin-bottom:16px;
+  padding:10px 16px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.72rem;
+  border-radius:2px;
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  transition:all 0.3s;
+}
+.status-msg.info{background:rgba(201,168,76,0.07);border-left:2px solid var(--gold);color:var(--gold-light);}
+.status-msg.success{background:var(--safe-dim);border-left:2px solid var(--success);color:#6ec99a;}
+.status-msg.error{background:var(--danger-dim);border-left:2px solid var(--danger);color:#e07060;}
+.status-msg.idle{background:var(--surface);border-left:2px solid var(--border2);color:var(--muted);}
+
+/* Axis labels */
+.board-axis-wrap{display:flex;gap:0;}
+.row-axis{display:flex;flex-direction:column;justify-content:space-around;padding-top:28px;padding-bottom:4px;margin-right:10px;}
+.row-lbl{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.62rem;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+}
+.col-axis-wrap{display:flex;flex-direction:column;flex:1;}
+.col-axis{display:flex;margin-bottom:6px;padding-left:2px;}
+.col-lbl{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.62rem;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  flex:1;
+}
+
+/* GRID */
+.board-grid{
+  display:grid;
+  border:1px solid rgba(255,255,255,0.06);
+  width:100%;
+  gap:0;
+}
+
+.cell{
+  aspect-ratio:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  transition:background 0.25s;
+  cursor:pointer;
+  overflow:hidden;
+}
+
+.cell::after{
+  content:'';
+  position:absolute;inset:0;
+  background:transparent;
+  transition:background 0.2s;
+  pointer-events:none;
+}
+
+.cell:hover::after{background:rgba(201,168,76,0.08);}
+
+.cell.light{background:var(--cell-light);}
+.cell.dark{background:var(--cell-dark);}
+
+/* Seat labels */
+.cell-label{
+  position:absolute;
+  bottom:3px;right:5px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(0.45rem,1.2vw,0.6rem);
+  color:rgba(255,255,255,0.12);
+  pointer-events:none;
+  line-height:1;
+}
+
+/* Threat zone */
+.cell.threatened{background:rgba(80,20,15,0.55) !important;}
+.cell.threatened .threat-dot{
+  position:absolute;
+  width:5px;height:5px;
+  border-radius:50%;
+  background:rgba(220,80,60,0.5);
+  animation:pulse-dot 2s infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:0.4;transform:scale(1);}50%{opacity:0.8;transform:scale(1.4);}}
+
+/* Selected cell (student placed) */
+.cell.has-student{background:var(--student-bg) !important;}
+
+/* Conflict cell */
+.cell.conflict{background:rgba(120,20,15,0.7) !important;}
+
+/* ── STUDENT PIECE ── */
+.student-piece{
+  position:relative;
+  z-index:2;
+  width:72%;height:72%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  animation:dropIn 0.4s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes dropIn{
+  from{transform:scale(0) translateY(-10px);opacity:0;}
+  to{transform:scale(1) translateY(0);opacity:1;}
+}
+
+.student-piece svg{width:100%;height:100%;}
+
+/* ── SIDE PANEL ── */
+.sidebar{display:flex;flex-direction:column;gap:20px;}
+
+.panel{
+  background:var(--card);
+  border:1px solid var(--border);
+  position:relative;
+  overflow:hidden;
+}
+
+.panel::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,0.3),transparent);
+}
+
+.panel-head{
+  padding:14px 18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid var(--border);
+}
+
+.panel-title{
+  font-family:'Playfair Display',serif;
+  font-size:0.9rem;
+  font-weight:700;
+  color:var(--text);
+}
+
+.panel-badge{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.65rem;
+  color:var(--gold);
+  padding:2px 8px;
+  background:var(--gold-dim);
+  border:1px solid rgba(201,168,76,0.2);
+}
+
+.panel-body{padding:16px 18px;}
+
+/* Stats */
+.stat-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.stat-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:12px 14px;
+  border-radius:1px;
+}
+
+.stat-val{
+  font-family:'Playfair Display',serif;
+  font-size:1.8rem;
+  font-weight:900;
+  line-height:1;
+  color:var(--gold-light);
+  margin-bottom:4px;
+}
+.stat-val.danger{color:#e07060;}
+.stat-val.success{color:#6ec99a;}
+
+.stat-key{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.58rem;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+/* Seat list */
+.seat-scroll{
+  max-height:260px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.seat-scroll::-webkit-scrollbar{width:3px;}
+.seat-scroll::-webkit-scrollbar-track{background:transparent;}
+.seat-scroll::-webkit-scrollbar-thumb{background:var(--muted);border-radius:2px;}
+
+.seat-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  font-size:0.82rem;
+  animation:slideRight 0.3s ease both;
+}
+@keyframes slideRight{from{transform:translateX(16px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+.seat-num{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.65rem;
+  color:var(--muted);
+  min-width:18px;
+}
+.seat-name{flex:1;color:var(--text);}
+.seat-pos{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.7rem;
+  color:var(--gold);
+  font-weight:500;
+  background:var(--gold-dim);
+  padding:1px 7px;
+}
+
+.empty-msg{
+  padding:28px 16px;
+  text-align:center;
+  color:var(--muted);
+  font-style:italic;
+  font-size:0.88rem;
+}
+
+/* Legend */
+.legend{display:flex;flex-direction:column;gap:8px;}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:0.82rem;color:var(--muted);}
+.legend-swatch{width:16px;height:16px;border-radius:1px;flex-shrink:0;border:1px solid var(--border);}
+.swatch-student{background:var(--student-bg);border-color:rgba(201,168,76,0.3);}
+.swatch-threat{background:rgba(80,20,15,0.55);border-color:rgba(192,74,58,0.3);}
+.swatch-conflict{background:rgba(120,20,15,0.7);border-color:rgba(192,74,58,0.5);}
+.swatch-empty{background:var(--cell-light);border-color:var(--border);}
+
+/* Auto-solve progress */
+.auto-progress{
+  height:2px;
+  background:var(--border);
+  margin:12px 0 0;
+  overflow:hidden;
+}
+.auto-progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--gold),var(--gold-light));
+  transition:width 0.3s ease;
+  width:0%;
+}
+
+/* Solution nav */
+.sol-nav{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+
+.sol-nav .action-btn{padding:7px 16px;font-size:0.82rem;}
+
+.sol-counter{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.7rem;
+  color:var(--muted);
+  flex:1;
+  text-align:right;
+}
+
+/* Instructions */
+.instructions{
+  font-size:0.82rem;
+  color:var(--muted);
+  line-height:1.7;
+  font-style:italic;
+}
+
+.instructions strong{color:var(--text);font-style:normal;font-weight:600;}
+
+/* Speed control */
+.speed-wrap{display:flex;align-items:center;gap:10px;}
+.speed-label{font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+input[type=range]{
+  -webkit-appearance:none;
+  width:90px;height:3px;
+  background:var(--border);
+  border-radius:2px;
+  outline:none;
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:13px;height:13px;
+  border-radius:50%;
+  background:var(--gold);
+  cursor:pointer;
+  border:2px solid var(--bg);
+}
+
+/* Celebration flash */
+@keyframes celebrate{
+  0%{box-shadow:0 0 0 0 var(--gold-glow);}
+  50%{box-shadow:0 0 40px 10px var(--gold-glow);}
+  100%{box-shadow:0 0 0 0 var(--gold-glow);}
+}
+.celebrating{animation:celebrate 0.8s ease 2;}
+
+/* ── CONFETTI-LIKE SPARKLES ── */
+.sparkle{
+  position:fixed;
+  pointer-events:none;
+  font-size:1.2rem;
+  z-index:9998;
+  animation:floatUp 1.5s ease-out forwards;
+}
+@keyframes floatUp{
+  from{transform:translateY(0) rotate(0deg);opacity:1;}
+  to{transform:translateY(-120px) rotate(180deg);opacity:0;}
+}
+</style>
+</head>
+<body>
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="header-rule"></div>
+    <div class="eyebrow">N-Queens · Real-World Application</div>
+    <h1>Exam<em>Guard</em></h1>
+    <p class="subtitle">An anti-cheating seat allocation system powered by the<br><strong>N-Queens backtracking algorithm</strong></p>
+  </header>
+
+  <div class="context-banner">
+    <div class="context-icon">🎓</div>
+    <div class="context-text">
+      <strong>The Problem:</strong> In any exam hall, students sitting in the same row, column, or diagonal can see each other's answer sheets — exactly how a chess queen threatens other pieces.
+      The N-Queens algorithm places <strong>N students</strong> across an <strong>N×N hall</strong> so that <strong>no two share a line of sight</strong> — making cheating geometrically impossible.
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <div class="ctrl-label">Hall Size</div>
+      <div class="ctrl-row" id="sizeButtons">
+        <button class="size-btn" onclick="setN(4)">4</button>
+        <button class="size-btn" onclick="setN(5)">5</button>
+        <button class="size-btn" onclick="setN(6)">6</button>
+        <button class="size-btn" onclick="setN(7)">7</button>
+        <button class="size-btn active" onclick="setN(8)">8</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Mode</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeManual" onclick="setMode('manual')">✏ Manual</button>
+        <button class="mode-btn" id="modeAuto" onclick="setMode('auto')">⚡ Auto-Solve</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="ctrl-group" id="speedCtrl" style="display:none">
+      <div class="ctrl-label">Animation Speed</div>
+      <div class="speed-wrap">
+        <span class="speed-label">Slow</span>
+        <input type="range" id="speedRange" min="1" max="5" value="3"/>
+        <span class="speed-label">Fast</span>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <button class="action-btn btn-primary" id="mainActionBtn" onclick="mainAction()">
+      <span id="mainActionIcon">⚡</span>
+      <span id="mainActionLabel">Auto-Solve</span>
+    </button>
+    <button class="action-btn btn-ghost" onclick="resetBoard()">↺ Reset</button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <!-- BOARD SECTION -->
+    <div class="board-wrap" id="boardWrap">
+      <div class="board-header">
+        <div class="board-title">Examination Hall</div>
+        <div class="board-subtitle" id="boardSubtitle">Select a mode and begin</div>
+      </div>
+
+      <div class="status-msg idle" id="statusMsg">
+        <span>⬡</span><span id="statusText">Choose Manual or Auto-Solve to begin allocating seats.</span>
+      </div>
+
+      <div class="board-axis-wrap">
+        <div class="row-axis" id="rowAxis"></div>
+        <div class="col-axis-wrap">
+          <div class="col-axis" id="colAxis"></div>
+          <div class="board-grid" id="boardGrid"></div>
+        </div>
+      </div>
+
+      <div class="auto-progress"><div class="auto-progress-fill" id="autoProgress"></div></div>
+
+      <!-- Solution navigation (auto mode) -->
+      <div class="sol-nav" id="solNav" style="display:none">
+        <button class="action-btn btn-ghost" onclick="prevSolution()">← Prev</button>
+        <button class="action-btn btn-ghost" onclick="nextSolution()">Next →</button>
+        <div class="sol-counter" id="solCounter">— / —</div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+      <!-- Stats -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Analytics</div>
+          <div class="panel-badge" id="statBadge">IDLE</div>
+        </div>
+        <div class="panel-body">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-val" id="sSeated">0</div>
+              <div class="stat-key">Seated</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val danger" id="sConflicts">0</div>
+              <div class="stat-key">Conflicts</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val success" id="sSolutions">—</div>
+              <div class="stat-key">Solutions</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="sSteps">0</div>
+              <div class="stat-key">Steps</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seat assignments -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Seat Assignments</div>
+          <div class="panel-badge" id="seatBadge">0 / 0</div>
+        </div>
+        <div class="panel-body">
+          <div class="seat-scroll" id="seatList">
+            <div class="empty-msg">No students seated yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Legend</div></div>
+        <div class="panel-body">
+          <div class="legend">
+            <div class="legend-item"><div class="legend-swatch swatch-student"></div>Student placed (safe)</div>
+            <div class="legend-item"><div class="legend-swatch swatch-threat"></div>Threat zone (line-of-sight)</div>
+            <div class="legend-item"><div class="legend-swatch swatch-conflict"></div>Conflict detected!</div>
+            <div class="legend-item"><div class="legend-swatch swatch-empty"></div>Available seat</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">How to Play</div></div>
+        <div class="panel-body">
+          <div class="instructions" id="instructionText">
+            <strong>Manual Mode:</strong> Click any cell to place a student. The hall highlights threat zones in real time. Place one student per row. If a conflict is detected, the cell turns red — backtrack and try again!<br><br>
+            <strong>Auto-Solve:</strong> Watch the backtracking algorithm find all valid solutions with step-by-step animation. Use Next/Prev to browse solutions.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const NAMES = [
+  "Aarav S.","Priya M.","Rohan K.","Sneha T.",
+  "Dev P.","Ananya R.","Karan J.","Meera B.",
+  "Arjun V.","Divya N.","Riya C.","Siddharth L."
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let N = 8;
+let mode = 'manual'; // 'manual' | 'auto'
+let board = []; // board[row] = col or -1
+let allSolutions = [];
+let currentSolIdx = 0;
+let autoRunning = false;
+let autoTimer = null;
+let stepCount = 0;
+let conflictCount = 0;
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+function init() {
+  board = new Array(N).fill(-1);
+  allSolutions = [];
+  currentSolIdx = 0;
+  autoRunning = false;
+  clearTimeout(autoTimer);
+  stepCount = 0; conflictCount = 0;
+  renderBoard();
+  renderSidebar();
+  updateStatus('idle', '⬡', `${N}×${N} exam hall ready. ${mode === 'manual' ? 'Click cells to seat students.' : 'Press Auto-Solve to begin.'}`);
+  document.getElementById('solNav').style.display = 'none';
+  document.getElementById('autoProgress').style.width = '0%';
+  document.getElementById('statBadge').textContent = 'IDLE';
+  document.getElementById('sSolutions').textContent = '—';
+  document.getElementById('boardWrap').classList.remove('celebrating');
+}
+
+// ─── BOARD RENDER ─────────────────────────────────────────────────────────
+function renderBoard() {
+  const grid = document.getElementById('boardGrid');
+  const rowAxis = document.getElementById('rowAxis');
+  const colAxis = document.getElementById('colAxis');
+
+  grid.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  grid.innerHTML = '';
+  rowAxis.innerHTML = '';
+  colAxis.innerHTML = '';
+
+  // Threat map
+  const threats = getThreatMap();
+
+  // Col axis
+  for (let c = 0; c < N; c++) {
+    colAxis.innerHTML += `<div class="col-lbl">${String.fromCharCode(65+c)}</div>`;
+  }
+
+  // Row axis + cells
+  for (let r = 0; r < N; r++) {
+    const rowH = `${100/N}%`;
+    rowAxis.innerHTML += `<div class="row-lbl" style="height:${rowH}">${r+1}</div>`;
+
+    for (let c = 0; c < N; c++) {
+      const isLight = (r+c)%2===0;
+      const hasStudent = board[r] === c;
+      const isThreat = !hasStudent && threats[r][c];
+      const isConflict = hasStudent && isConflictCell(r,c);
+
+      let cls = `cell ${isLight?'light':'dark'}`;
+      if (isConflict) cls += ' conflict';
+      else if (hasStudent) cls += ' has-student';
+      else if (isThreat) cls += ' threatened';
+
+      const seatLabel = `${String.fromCharCode(65+c)}${r+1}`;
+
+      const cell = document.createElement('div');
+      cell.className = cls;
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.innerHTML = `<div class="cell-label">${seatLabel}</div>`;
+
+      if (isThreat) cell.innerHTML += `<div class="threat-dot"></div>`;
+
+      if (hasStudent) {
+        const color = isConflict ? '#e07060' : '#c9a84c';
+        cell.innerHTML += studentSVG(color);
+      }
+
+      if (mode === 'manual') {
+        cell.addEventListener('click', () => cellClick(r, c));
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+
+  // Update row axis height to match cells
+  const cells = grid.querySelectorAll('.cell');
+  if (cells.length > 0) {
+    // rowAxis items auto-size via CSS
+  }
+}
+
+function studentSVG(color) {
+  return `<div class="student-piece">
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="sg" cx="50%" cy="30%" r="60%">
+          <stop offset="0%" stop-color="${color}" stop-opacity="1"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="0.6"/>
+        </radialGradient>
+      </defs>
+      <!-- Crown shape -->
+      <path d="M5 30 L8 15 L15 23 L20 6 L25 23 L32 15 L35 30 Z" fill="url(#sg)"/>
+      <!-- Base -->
+      <rect x="5" y="30" width="30" height="5" rx="1" fill="${color}" opacity="0.9"/>
+      <!-- Orbs -->
+      <circle cx="8" cy="15" r="2.5" fill="white" opacity="0.85"/>
+      <circle cx="20" cy="6"  r="2.5" fill="white" opacity="0.85"/>
+      <circle cx="32" cy="15" r="2.5" fill="white" opacity="0.85"/>
+      <!-- Highlight -->
+      <path d="M14 19 L18 11" stroke="white" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
+    </svg>
+  </div>`;
+}
+
+function getThreatMap() {
+  const map = Array.from({length:N}, ()=>new Array(N).fill(false));
+  for (let r = 0; r < N; r++) {
+    if (board[r] < 0) continue;
+    const col = board[r];
+    for (let c = 0; c < N; c++) if (c!==col) map[r][c]=true;
+    for (let rr = 0; rr < N; rr++) if (rr!==r) map[rr][col]=true;
+    for (let d = 1; d < N; d++) {
+      [[r+d,col+d],[r+d,col-d],[r-d,col+d],[r-d,col-d]].forEach(([rr,cc])=>{
+        if(rr>=0&&rr<N&&cc>=0&&cc<N) map[rr][cc]=true;
+      });
+    }
+  }
+  return map;
+}
+
+function isConflictCell(row, col) {
+  for (let r = 0; r < N; r++) {
+    if (r === row) continue;
+    if (board[r] < 0) continue;
+    const c = board[r];
+    if (c === col) return true;
+    if (Math.abs(c - col) === Math.abs(r - row)) return true;
+  }
+  return false;
+}
+
+// ─── MANUAL MODE ─────────────────────────────────────────────────────────
+function cellClick(row, col) {
+  if (mode !== 'manual') return;
+  stepCount++;
+
+  if (board[row] === col) {
+    // Deselect
+    board[row] = -1;
+    updateStatus('info', '↩', `Removed student from row ${row+1}.`);
+  } else {
+    board[row] = col;
+    // Check conflict
+    if (isConflictCell(row, col)) {
+      conflictCount++;
+      updateStatus('error', '✗', `Conflict at ${String.fromCharCode(65+col)}${row+1}! This student can see another — try a different seat.`);
+    } else {
+      const seated = board.filter(x=>x>=0).length;
+      if (seated === N && board.every(x=>x>=0)) {
+        celebrate();
+      } else {
+        updateStatus('info', '✓', `Student ${row+1} seated at ${String.fromCharCode(65+col)}${row+1}. No conflicts in row ${row+1}.`);
+      }
+    }
+  }
+
+  renderBoard();
+  renderSidebar();
+  updateStats();
+}
+
+function celebrate() {
+  updateStatus('success', '🎓', `All ${N} students seated with zero conflicts! Perfect anti-cheating arrangement found!`);
+  document.getElementById('boardWrap').classList.add('celebrating');
+  // Sparkles
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => spawnSparkle(), i * 120);
+  }
+}
+
+function spawnSparkle() {
+  const emojis = ['✨','🌟','⭐','🎓','👑','💫'];
+  const s = document.createElement('div');
+  s.className = 'sparkle';
+  s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+  s.style.left = Math.random()*100 + 'vw';
+  s.style.top = (40 + Math.random()*40) + 'vh';
+  document.body.appendChild(s);
+  setTimeout(()=>s.remove(), 1600);
+}
+
+// ─── AUTO-SOLVE ───────────────────────────────────────────────────────────
+function solveAll() {
+  const sols = [];
+  function bt(b, row) {
+    if (row === N) { sols.push([...b]); return; }
+    for (let c = 0; c < N; c++) {
+      let safe = true;
+      for (let i = 0; i < row; i++) {
+        if (b[i]===c || Math.abs(b[i]-c)===Math.abs(i-row)) { safe=false; break; }
+      }
+      if (safe) { b[row]=c; bt(b,row+1); b[row]=-1; }
+    }
+  }
+  bt(new Array(N).fill(-1), 0);
+  return sols;
+}
+
+async function runAutoSolve() {
+  if (autoRunning) { stopAuto(); return; }
+  autoRunning = true;
+
+  const speedVal = parseInt(document.getElementById('speedRange').value);
+  const delays = [600, 450, 280, 150, 60];
+  const delay = delays[speedVal - 1];
+
+  allSolutions = solveAll();
+  document.getElementById('sSolutions').textContent = allSolutions.length;
+  document.getElementById('statBadge').textContent = 'SOLVING';
+  document.getElementById('solNav').style.display = 'flex';
+  document.getElementById('mainActionLabel').textContent = 'Stop';
+  document.getElementById('mainActionIcon').textContent = '■';
+
+  // Animate row by row
+  board = new Array(N).fill(-1);
+  stepCount = 0;
+
+  const solution = allSolutions[0];
+  for (let r = 0; r < N; r++) {
+    if (!autoRunning) break;
+    await sleep(delay);
+    board[r] = solution[r];
+    stepCount++;
+    renderBoard();
+    renderSidebar();
+    updateStats();
+    document.getElementById('autoProgress').style.width = `${((r+1)/N)*100}%`;
+    updateStatus('info', '▶', `Placing student ${r+1} at ${String.fromCharCode(65+solution[r])}${r+1}...`);
+  }
+
+  if (autoRunning) {
+    currentSolIdx = 0;
+    updateSolNav();
+    celebrate();
+    document.getElementById('statBadge').textContent = 'DONE';
+    document.getElementById('mainActionLabel').textContent = 'Auto-Solve';
+    document.getElementById('mainActionIcon').textContent = '⚡';
+  }
+  autoRunning = false;
+}
+
+function stopAuto() {
+  autoRunning = false;
+  document.getElementById('mainActionLabel').textContent = 'Auto-Solve';
+  document.getElementById('mainActionIcon').textContent = '⚡';
+  updateStatus('idle','⬡','Auto-solve stopped.');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function nextSolution() {
+  if (allSolutions.length === 0) return;
+  currentSolIdx = (currentSolIdx + 1) % allSolutions.length;
+  displaySolution(allSolutions[currentSolIdx]);
+}
+function prevSolution() {
+  if (allSolutions.length === 0) return;
+  currentSolIdx = (currentSolIdx - 1 + allSolutions.length) % allSolutions.length;
+  displaySolution(allSolutions[currentSolIdx]);
+}
+function displaySolution(sol) {
+  board = [...sol];
+  renderBoard();
+  renderSidebar();
+  updateStats();
+  updateSolNav();
+  updateStatus('success','✓',`Solution ${currentSolIdx+1} of ${allSolutions.length} — all ${N} students seated, 0 conflicts.`);
+}
+function updateSolNav() {
+  document.getElementById('solCounter').textContent = `${currentSolIdx+1} / ${allSolutions.length}`;
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const seatList = document.getElementById('seatList');
+  const seated = [];
+  for (let r = 0; r < N; r++) {
+    if (board[r] >= 0) seated.push({row:r, col:board[r]});
+  }
+
+  document.getElementById('seatBadge').textContent = `${seated.length} / ${N}`;
+
+  if (seated.length === 0) {
+    seatList.innerHTML = '<div class="empty-msg">No students seated yet.</div>';
+    return;
+  }
+
+  seatList.innerHTML = seated.map((s, i) => `
+    <div class="seat-row" style="animation-delay:${i*40}ms">
+      <div class="seat-num">${s.row+1}</div>
+      <div class="seat-name">${NAMES[s.row % NAMES.length]}</div>
+      <div class="seat-pos">${String.fromCharCode(65+s.col)}${s.row+1}</div>
+    </div>
+  `).join('');
+}
+
+function updateStats() {
+  const seated = board.filter(x=>x>=0).length;
+  document.getElementById('sSeated').textContent = seated;
+  document.getElementById('sConflicts').textContent = conflictCount;
+  document.getElementById('sSteps').textContent = stepCount;
+}
+
+// ─── STATUS ───────────────────────────────────────────────────────────────
+function updateStatus(type, icon, msg) {
+  const el = document.getElementById('statusMsg');
+  el.className = `status-msg ${type}`;
+  el.innerHTML = `<span>${icon}</span><span id="statusText">${msg}</span>`;
+}
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────
+function setN(n) {
+  N = n;
+  document.querySelectorAll('.size-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.textContent)===n);
+  });
+  init();
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeManual').classList.toggle('active', m==='manual');
+  document.getElementById('modeAuto').classList.toggle('active', m==='auto');
+  document.getElementById('speedCtrl').style.display = m==='auto'?'flex':'none';
+
+  if (m === 'manual') {
+    document.getElementById('mainActionBtn').style.display = 'none';
+    document.getElementById('solNav').style.display = 'none';
+    document.getElementById('mainActionLabel').textContent = 'Auto-Solve';
+    document.getElementById('mainActionIcon').textContent = '⚡';
+  } else {
+    document.getElementById('mainActionBtn').style.display = 'flex';
+  }
+
+  init();
+}
+
+function mainAction() {
+  if (mode === 'auto') runAutoSolve();
+}
+
+function resetBoard() {
+  autoRunning = false;
+  init();
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────
+setMode('manual');
+</script>
+</body>
+</html>

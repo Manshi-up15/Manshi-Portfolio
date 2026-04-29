@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ExamGuard — Anti-Cheating Seat Allocator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #e8ff47;
+    --accent2: #ff4757;
+    --accent3: #47c2ff;
+    --text: #e8e8f0;
+    --muted: #5a5a72;
+    --queen: #e8ff47;
+    --safe: #1a2a1a;
+    --threat: #2a1a1a;
+    --empty: #141420;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative; z-index: 1;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo-block { display: flex; flex-direction: column; gap: 6px; }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    letter-spacing: -2px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .logo span { color: var(--text); }
+
+  .tagline {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .badge {
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    align-self: flex-start;
+    margin-top: 8px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    cursor: pointer;
+    appearance: none;
+    min-width: 100px;
+  }
+
+  select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
+  .btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 12px 24px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    align-self: flex-end;
+  }
+
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(232,255,71,0.25); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+
+  /* Main layout */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 32px;
+    align-items: start;
+  }
+
+  @media (max-width: 780px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Board */
+  .board-section {}
+
+  .board-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .board-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .board-wrap {
+    position: relative;
+  }
+
+  .board {
+    display: grid;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+
+  .cell {
+    width: 68px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.3s;
+    cursor: default;
+  }
+
+  @media (max-width: 600px) { .cell { width: 44px; height: 44px; } }
+
+  .cell.light { background: #16162a; }
+  .cell.dark  { background: #0f0f1f; }
+  .cell.threatened { background: var(--threat) !important; }
+  .cell.queen-cell { background: #1e2010 !important; }
+
+  /* Threat dot */
+  .cell.threatened::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,71,87,0.35);
+  }
+
+  /* Queen piece */
+  .queen-icon {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    z-index: 2;
+    animation: placeQueen 0.35s cubic-bezier(.34,1.56,.64,1) both;
+  }
+
+  @media (max-width: 600px) { .queen-icon { width: 30px; height: 30px; } }
+
+  @keyframes placeQueen {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);  opacity: 1; }
+  }
+
+  .queen-icon svg { width: 100%; height: 100%; }
+
+  /* Row/col labels */
+  .row-labels, .col-labels {
+    display: flex;
+  }
+  .row-labels { flex-direction: column; margin-right: 8px; }
+  .col-labels { margin-bottom: 6px; margin-left: 28px; }
+
+  .axis-label {
+    width: 68px; height: 68px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  @media (max-width: 600px) { .axis-label { width: 44px; height: 44px; } }
+
+  .row-label { width: 20px; height: 68px; font-size: 0.65rem; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+
+  @media (max-width: 600px) { .row-label { height: 44px; } }
+
+  /* Sidebar */
+  .sidebar {}
+
+  .panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    background: var(--border);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .panel-body { padding: 16px; }
+
+  /* Stats */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-key { font-size: 0.75rem; color: var(--muted); }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-val.red { color: var(--accent2); }
+  .stat-val.blue { color: var(--accent3); }
+
+  /* Seating list */
+  .seat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .seat-list::-webkit-scrollbar { width: 4px; }
+  .seat-list::-webkit-scrollbar-track { background: var(--border); }
+  .seat-list::-webkit-scrollbar-thumb { background: var(--muted); }
+
+  .seat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    animation: slideIn 0.3s ease both;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  .seat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 20px;
+  }
+
+  .seat-name { flex: 1; color: var(--text); }
+
+  .seat-pos {
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    font-family: 'Syne', sans-serif;
+  }
+
+  /* Algorithm explainer */
+  .step-list { list-style: none; }
+  .step-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .step-item:last-child { border-bottom: none; }
+  .step-item.active { color: var(--text); }
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 20px;
+  }
+
+  /* Solution counter */
+  .sol-counter {
+    text-align: center;
+    padding: 20px;
+  }
+  .sol-big {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .sol-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  /* Info box */
+  .info-box {
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    background: rgba(232,255,71,0.04);
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .info-box strong { color: var(--accent); font-weight: 500; }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.5s ease;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.8;
+  }
+  .empty-state .big { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: var(--border); display: block; margin-bottom: 8px; }
+
+  /* Threat lines overlay */
+  .threat-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .board-outer { display: flex; }
+
+  .sol-nav {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .sol-nav .btn {
+    padding: 8px 14px;
+    font-size: 0.75rem;
+  }
+
+  .current-sol-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-block">
+      <div class="logo">Exam<span>Guard</span></div>
+      <div class="tagline">Anti-Cheating Seat Allocator · N-Queens Engine</div>
+    </div>
+    <div class="badge">N-Queens · Real World</div>
+  </header>
+
+  <div class="info-box">
+    <strong>Real-Life Problem:</strong> In an exam hall, students sitting in the same row, column, or diagonal can easily see each other's answer sheets — just like how a chess queen attacks.
+    The <strong>N-Queens algorithm</strong> places <em>N</em> students in an <em>N×N</em> hall such that <strong>no two students share a row, column, or diagonal</strong> — making cheating geometrically impossible.
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Hall Size (N)</label>
+      <select id="sizeSelect">
+        <option value="4">4×4 (4 students)</option>
+        <option value="5">5×5 (5 students)</option>
+        <option value="6">6×6 (6 students)</option>
+        <option value="7">7×7 (7 students)</option>
+        <option value="8" selected>8×8 (8 students)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>View Mode</label>
+      <select id="modeSelect">
+        <option value="threats">Show Threat Zones</option>
+        <option value="clean">Clean Layout</option>
+      </select>
+    </div>
+    <button class="btn" onclick="solve()">&#9654; Solve Hall</button>
+    <button class="btn btn-outline" onclick="cycleNext()">Next Solution →</button>
+  </div>
+
+  <div class="main-grid">
+    <div class="board-section">
+      <div class="board-title">Exam Hall Layout</div>
+      <div id="boardContainer"></div>
+      <div class="sol-nav">
+        <div class="current-sol-label"><span class="dot"></span> <span id="solLabel">—</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <!-- Stats -->
+      <div class="panel">
+        <div class="panel-header">Analysis</div>
+        <div class="panel-body">
+          <div class="stat-row">
+            <span class="stat-key">Hall Size</span>
+            <span class="stat-val" id="statSize">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-key">Students Seated</span>
+            <span class="stat-val" id="statSeated">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-key">Total Solutions</span>
+            <span class="stat-val blue" id="statSolutions">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-key">Cheating Risk</span>
+            <span class="stat-val red" id="statRisk">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-key">Conflicts Found</span>
+            <span class="stat-val" id="statConflicts">—</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Seat assignments -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>Seat Assignments</span>
+          <span id="seatCount" style="color:var(--accent)">0</span>
+        </div>
+        <div class="panel-body">
+          <div class="seat-list" id="seatList">
+            <div class="empty-state"><span class="big">∅</span>Run the solver first.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Algorithm Steps -->
+      <div class="panel">
+        <div class="panel-header">How It Works</div>
+        <div class="panel-body">
+          <ul class="step-list" id="stepList">
+            <li class="step-item active"><span class="step-num">01</span> Place first student in row 1. Try each column.</li>
+            <li class="step-item"><span class="step-num">02</span> For each placement, check: same column? Same diagonal?</li>
+            <li class="step-item"><span class="step-num">03</span> If safe → move to next row (recurse deeper).</li>
+            <li class="step-item"><span class="step-num">04</span> If conflict → backtrack, try next column in current row.</li>
+            <li class="step-item"><span class="step-num">05</span> Repeat until all N students are placed with 0 conflicts.</li>
+            <li class="step-item"><span class="step-num">06</span> Each valid arrangement = one safe exam seating plan.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Sample student names ───────────────────────────────────────────────────
+const NAMES = [
+  "Aarav S.", "Priya M.", "Rohan K.", "Sneha T.", "Dev P.", "Ananya R.",
+  "Karan J.", "Meera B.", "Arjun V.", "Divya N.", "Riya C.", "Siddharth L.",
+  "Kavya H.", "Yash D.", "Pooja W.", "Nikhil E."
+];
+
+// ─── N-Queens Solver (backtracking) ─────────────────────────────────────────
+function solveNQueens(n) {
+  const solutions = [];
+
+  function isSafe(board, row, col) {
+    // Check column
+    for (let i = 0; i < row; i++) {
+      if (board[i] === col) return false;
+    }
+    // Check diagonals
+    for (let i = 0; i < row; i++) {
+      if (Math.abs(board[i] - col) === Math.abs(i - row)) return false;
+    }
+    return true;
+  }
+
+  function backtrack(board, row) {
+    if (row === n) {
+      solutions.push([...board]);
+      return;
+    }
+    for (let col = 0; col < n; col++) {
+      if (isSafe(board, row, col)) {
+        board[row] = col;
+        backtrack(board, row + 1);
+        board[row] = -1; // backtrack
+      }
+    }
+  }
+
+  backtrack(new Array(n).fill(-1), 0);
+  return solutions;
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let allSolutions = [];
+let currentSolIdx = 0;
+let currentN = 8;
+
+// ─── Solve & Render ──────────────────────────────────────────────────────────
+function solve() {
+  currentN = parseInt(document.getElementById('sizeSelect').value);
+  allSolutions = solveNQueens(currentN);
+  currentSolIdx = 0;
+  renderAll();
+}
+
+function cycleNext() {
+  if (allSolutions.length === 0) { solve(); return; }
+  currentSolIdx = (currentSolIdx + 1) % allSolutions.length;
+  renderAll();
+}
+
+function renderAll() {
+  const solution = allSolutions[currentSolIdx];
+  const n = currentN;
+  const showThreats = document.getElementById('modeSelect').value === 'threats';
+
+  // Build threat map
+  const threatMap = Array.from({length: n}, () => new Array(n).fill(false));
+  if (showThreats) {
+    solution.forEach((col, row) => {
+      for (let c = 0; c < n; c++) if (c !== col) threatMap[row][c] = true;
+      for (let r = 0; r < n; r++) if (r !== row) threatMap[r][col] = true;
+      for (let d = 1; d < n; d++) {
+        [[row+d,col+d],[row+d,col-d],[row-d,col+d],[row-d,col-d]].forEach(([r,c]) => {
+          if (r>=0&&r<n&&c>=0&&c<n) threatMap[r][c] = true;
+        });
+      }
+    });
+  }
+
+  // Render board
+  const container = document.getElementById('boardContainer');
+  const cellSize = window.innerWidth < 600 ? 44 : 68;
+
+  let html = `<div class="board-outer">`;
+  // Row labels
+  html += `<div class="row-labels">`;
+  for (let r = 0; r < n; r++) {
+    html += `<div class="row-label">${r+1}</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div>`;
+  // Col labels
+  html += `<div class="col-labels">`;
+  for (let c = 0; c < n; c++) {
+    const letter = String.fromCharCode(65 + c);
+    html += `<div class="axis-label" style="width:${cellSize}px;height:20px;font-size:0.65rem">${letter}</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="board" style="grid-template-columns:repeat(${n},${cellSize}px);">`;
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const isQueen = solution[r] === c;
+      const isThreat = threatMap[r][c] && !isQueen;
+      const isLight = (r + c) % 2 === 0;
+
+      let cls = `cell ${isLight ? 'light' : 'dark'}`;
+      if (isQueen) cls += ' queen-cell';
+      else if (isThreat) cls += ' threatened';
+
+      const title = isQueen
+        ? `Student ${r+1}: ${NAMES[r]} — Seat ${String.fromCharCode(65+c)}${r+1}`
+        : isThreat ? 'Threat zone' : '';
+
+      html += `<div class="${cls}" style="width:${cellSize}px;height:${cellSize}px" title="${title}">`;
+      if (isQueen) {
+        html += `<div class="queen-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Crown body -->
+            <path d="M6 28 L8 16 L14 22 L20 8 L26 22 L32 16 L34 28 Z" fill="#e8ff47" opacity="0.95"/>
+            <!-- Crown base -->
+            <rect x="6" y="28" width="28" height="5" rx="1" fill="#e8ff47" opacity="0.95"/>
+            <!-- Orbs -->
+            <circle cx="8" cy="16" r="2.5" fill="#fff" opacity="0.9"/>
+            <circle cx="20" cy="8"  r="2.5" fill="#fff" opacity="0.9"/>
+            <circle cx="32" cy="16" r="2.5" fill="#fff" opacity="0.9"/>
+            <!-- Shine -->
+            <path d="M13 18 L17 12" stroke="white" stroke-width="1" opacity="0.4"/>
+          </svg>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+  html += `</div></div></div>`;
+  container.innerHTML = html;
+
+  // Update stats
+  document.getElementById('statSize').textContent = `${n} × ${n}`;
+  document.getElementById('statSeated').textContent = n;
+  document.getElementById('statSolutions').textContent = allSolutions.length.toLocaleString();
+  document.getElementById('statRisk').textContent = '0%';
+  document.getElementById('statConflicts').textContent = '0';
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('solLabel').textContent =
+    `Solution ${currentSolIdx + 1} of ${allSolutions.length}`;
+
+  // Seat assignments
+  const seatList = document.getElementById('seatList');
+  const seatCount = document.getElementById('seatCount');
+  seatCount.textContent = n;
+
+  let seatHtml = '';
+  solution.forEach((col, row) => {
+    const colLetter = String.fromCharCode(65 + col);
+    const name = NAMES[row % NAMES.length];
+    const delay = row * 50;
+    seatHtml += `
+      <div class="seat-item" style="animation-delay:${delay}ms">
+        <span class="seat-num">#${row+1}</span>
+        <span class="seat-name">${name}</span>
+        <span class="seat-pos">${colLetter}${row+1}</span>
+      </div>`;
+  });
+  seatList.innerHTML = seatHtml;
+
+  // Highlight steps based on n
+  const steps = document.querySelectorAll('.step-item');
+  steps.forEach((s, i) => s.classList.toggle('active', i < 3));
+}
+
+// ─── Auto-run on load ────────────────────────────────────────────────────────
+window.addEventListener('load', solve);
+document.getElementById('modeSelect').addEventListener('change', () => {
+  if (allSolutions.length) renderAll();
+});
+</script>
+</body>
+</html>

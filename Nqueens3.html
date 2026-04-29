@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Kingdom of Queensmere</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#0d0a07;
+  --bg2:#120e09;
+  --parchment:#1a1208;
+  --gold:#c9a84c;
+  --gold2:#e8c96a;
+  --gold-dim:#6b5520;
+  --crimson:#8b1a1a;
+  --crimson2:#c0392b;
+  --ivory:#e8dcc8;
+  --ivory-dim:#7a6e5a;
+  --green-light:#2a3a1a;
+  --green-dark:#1a2a10;
+  --cell-light:#2d3d1d;
+  --cell-dark:#1e2c11;
+  --threat-color:rgba(139,26,26,0.35);
+  --queen-glow:rgba(201,168,76,0.6);
+  --border-ornate:#6b5520;
+  --safe-cell:#1d3318;
+}
+
+html,body{height:100%;overflow-x:hidden}
+
+body{
+  background:var(--bg);
+  font-family:'EB Garamond',serif;
+  min-height:100vh;
+  position:relative;
+  color:var(--ivory);
+}
+
+/* ── Atmospheric background ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 100%, rgba(201,168,76,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(201,168,76,0.06) 0%, transparent 50%);
+  pointer-events:none;z-index:0;
+}
+
+/* Grain texture */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:0.7;
+}
+
+/* Floating particles */
+.particles{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.particle{
+  position:absolute;width:2px;height:2px;border-radius:50%;
+  background:var(--gold);opacity:0;
+  animation:floatUp var(--dur,8s) var(--delay,0s) infinite ease-in;
+}
+@keyframes floatUp{
+  0%{transform:translateY(100vh) translateX(0);opacity:0}
+  10%{opacity:var(--op,0.4)}
+  90%{opacity:var(--op,0.4)}
+  100%{transform:translateY(-50px) translateX(var(--dx,20px));opacity:0}
+}
+
+.wrapper{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:24px 16px 48px}
+
+/* ── Header ── */
+header{text-align:center;margin-bottom:32px;position:relative}
+
+.crown-ornament{
+  font-size:1.4rem;color:var(--gold);letter-spacing:16px;
+  display:block;margin-bottom:4px;
+  text-shadow:0 0 20px var(--queen-glow);
+}
+
+h1{
+  font-family:'Cinzel Decorative',cursive;
+  font-size:clamp(1.6rem,5vw,3rem);
+  font-weight:900;
+  color:var(--gold2);
+  letter-spacing:2px;
+  text-shadow:0 0 40px rgba(232,201,106,0.4), 0 2px 0 rgba(0,0,0,0.8);
+  line-height:1.1;
+  margin-bottom:8px;
+}
+
+.subtitle{
+  font-family:'Cinzel',serif;
+  font-size:0.8rem;
+  color:var(--ivory-dim);
+  letter-spacing:3px;
+  text-transform:uppercase;
+  font-style:normal;
+}
+
+/* Horizontal rule ornament */
+.hr-ornament{
+  display:flex;align-items:center;gap:16px;
+  margin:16px auto;max-width:500px;
+}
+.hr-ornament::before,.hr-ornament::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);
+}
+.hr-ornament span{color:var(--gold);font-size:1rem}
+
+.hero-problem{
+  border:1px solid var(--gold-dim);
+  background:linear-gradient(135deg,rgba(201,168,76,0.06),rgba(139,26,26,0.05));
+  padding:14px 20px;
+  margin:22px auto 0;
+  max-width:820px;
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  text-align:left;
+  color:var(--ivory-dim);
+  font-size:0.98rem;
+  line-height:1.65;
+}
+.hero-problem-icon{
+  color:var(--gold);
+  font-size:1.25rem;
+  line-height:1.5;
+  flex-shrink:0;
+  text-shadow:0 0 14px var(--queen-glow);
+}
+.hero-problem strong{color:var(--gold2);font-weight:600}
+
+/* ── Chronicle / Status bar ── */
+.chronicle{
+  border:1px solid var(--gold-dim);
+  background:linear-gradient(135deg,rgba(201,168,76,0.06),rgba(139,26,26,0.06));
+  padding:12px 20px;
+  margin-bottom:24px;
+  position:relative;
+  text-align:center;
+}
+.chronicle::before,.chronicle::after{
+  content:'✦';position:absolute;
+  color:var(--gold-dim);font-size:0.8rem;
+}
+.chronicle::before{top:6px;left:10px}
+.chronicle::after{top:6px;right:10px}
+
+.chronicle-label{
+  font-family:'Cinzel',serif;font-size:0.6rem;
+  color:var(--gold-dim);letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:4px;
+}
+.chronicle-text{
+  font-style:italic;color:var(--ivory);font-size:0.95rem;
+  min-height:1.4em;transition:color 0.5s;
+}
+.chronicle-text.victory{color:var(--gold2)}
+.chronicle-text.conflict{color:#e07070}
+
+/* ── Mode Switcher ── */
+.mode-switcher{
+  display:flex;justify-content:center;gap:0;
+  margin-bottom:20px;
+  border:1px solid var(--gold-dim);
+  width:fit-content;margin-left:auto;margin-right:auto;
+  overflow:hidden;
+}
+.mode-btn{
+  padding:10px 28px;
+  font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;border:none;
+  background:transparent;color:var(--ivory-dim);
+  transition:all 0.3s;position:relative;
+}
+.mode-btn.active{
+  background:linear-gradient(135deg,rgba(201,168,76,0.2),rgba(201,168,76,0.08));
+  color:var(--gold2);
+}
+.mode-btn:not(:last-child){border-right:1px solid var(--gold-dim)}
+.mode-btn:hover:not(.active){color:var(--ivory);background:rgba(255,255,255,0.03)}
+
+/* ── Controls ── */
+.controls-row{
+  display:flex;flex-wrap:wrap;gap:12px;
+  align-items:center;justify-content:center;
+  margin-bottom:28px;
+}
+
+.ctrl-group{display:flex;flex-direction:column;gap:4px;align-items:center}
+.ctrl-label{
+  font-family:'Cinzel',serif;font-size:0.55rem;
+  color:var(--gold-dim);letter-spacing:2px;text-transform:uppercase;
+}
+
+/* Size buttons */
+.size-btns{display:flex;gap:0;border:1px solid var(--gold-dim);overflow:hidden}
+.sz-btn{
+  width:36px;height:32px;
+  font-family:'Cinzel',serif;font-size:0.8rem;font-weight:600;
+  cursor:pointer;border:none;
+  background:transparent;color:var(--ivory-dim);
+  transition:all 0.2s;
+}
+.sz-btn:not(:last-child){border-right:1px solid var(--gold-dim)}
+.sz-btn.active{background:rgba(201,168,76,0.2);color:var(--gold2)}
+.sz-btn:hover:not(.active){background:rgba(255,255,255,0.04);color:var(--ivory)}
+
+/* Speed slider */
+.speed-wrap{display:flex;align-items:center;gap:10px}
+.speed-wrap input[type=range]{
+  -webkit-appearance:none;width:100px;height:3px;
+  background:var(--gold-dim);outline:none;cursor:pointer;
+  border-radius:0;
+}
+.speed-wrap input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;
+  background:var(--gold2);cursor:pointer;border-radius:50%;
+  box-shadow:0 0 8px var(--queen-glow);
+}
+.speed-label{font-size:0.75rem;color:var(--ivory-dim);min-width:40px}
+
+/* Buttons */
+.btn-royal{
+  font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;border:none;
+  padding:10px 20px;
+  background:linear-gradient(135deg,rgba(201,168,76,0.25),rgba(201,168,76,0.1));
+  border:1px solid var(--gold-dim);color:var(--gold);
+  transition:all 0.25s;position:relative;overflow:hidden;
+}
+.btn-royal::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(201,168,76,0.15),transparent);
+  opacity:0;transition:opacity 0.25s;
+}
+.btn-royal:hover::before{opacity:1}
+.btn-royal:hover{border-color:var(--gold);color:var(--gold2);box-shadow:0 0 20px rgba(201,168,76,0.2)}
+.btn-royal:active{transform:scale(0.97)}
+.btn-royal:disabled{opacity:0.4;cursor:not-allowed}
+
+.btn-danger{
+  border-color:var(--crimson);color:#e07070;
+  background:linear-gradient(135deg,rgba(139,26,26,0.2),rgba(139,26,26,0.05));
+}
+.btn-danger:hover{border-color:var(--crimson2);color:#ff8080;box-shadow:0 0 20px rgba(139,26,26,0.3)}
+
+/* ── Board area ── */
+.board-area{display:flex;gap:28px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+
+.board-container{position:relative}
+
+/* Ornate border around board */
+.board-frame{
+  padding:14px;
+  background:linear-gradient(135deg,rgba(201,168,76,0.08),rgba(26,18,8,0.5));
+  border:2px solid var(--gold-dim);
+  position:relative;
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,0.1),
+    inset 0 0 60px rgba(0,0,0,0.6),
+    0 20px 80px rgba(0,0,0,0.8);
+}
+.board-frame::before,.board-frame::after{
+  content:'';position:absolute;
+  width:12px;height:12px;
+  border:2px solid var(--gold);
+}
+.board-frame::before{top:-2px;left:-2px;border-right:none;border-bottom:none}
+.board-frame::after{bottom:-2px;right:-2px;border-left:none;border-top:none}
+.corner-tl,.corner-tr,.corner-bl,.corner-br{
+  position:absolute;width:12px;height:12px;
+  border:2px solid var(--gold);
+}
+.corner-tr{top:-2px;right:-2px;border-left:none;border-bottom:none}
+.corner-bl{bottom:-2px;left:-2px;border-right:none;border-top:none}
+
+/* Column labels */
+.col-labels{display:flex;margin-left:22px;margin-bottom:4px}
+.axis-lbl{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:0.6rem;color:var(--gold-dim);
+  letter-spacing:1px;
+}
+
+.board-with-labels{display:flex;gap:0}
+
+.row-labels{display:flex;flex-direction:column;margin-right:4px}
+.row-lbl{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:0.6rem;color:var(--gold-dim);
+}
+
+.board{display:grid;border:1px solid rgba(201,168,76,0.15)}
+
+.cell{
+  position:relative;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.4s, box-shadow 0.3s;
+  overflow:hidden;
+}
+.cell::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,rgba(255,255,255,0.03) 0%,transparent 70%);
+  opacity:0;transition:opacity 0.2s;
+}
+.cell:hover::before{opacity:1}
+
+.cell.light{background:var(--cell-light)}
+.cell.dark{background:var(--cell-dark)}
+.cell.threatened{background:var(--threat-color) !important;box-shadow:inset 0 0 12px rgba(139,26,26,0.5)}
+.cell.safe-hint{background:rgba(50,160,50,0.12) !important}
+.cell.queen-placed{background:rgba(201,168,76,0.15) !important}
+.cell.selected-row{outline:2px solid rgba(201,168,76,0.3);outline-offset:-2px}
+
+/* Threat dot */
+.threat-dot{
+  position:absolute;
+  width:6px;height:6px;border-radius:50%;
+  background:rgba(200,60,60,0.6);
+  pointer-events:none;
+  animation:pulseDot 2s ease-in-out infinite;
+}
+@keyframes pulseDot{
+  0%,100%{transform:scale(1);opacity:0.6}
+  50%{transform:scale(1.4);opacity:0.9}
+}
+
+/* Queen SVG piece */
+.queen-piece{
+  position:relative;z-index:3;
+  display:flex;align-items:center;justify-content:center;
+  animation:dropIn 0.4s cubic-bezier(.34,1.56,.64,1) both;
+  cursor:pointer;
+}
+@keyframes dropIn{
+  from{transform:scale(0) rotate(-15deg) translateY(-20px);opacity:0;filter:blur(4px)}
+  to{transform:scale(1) rotate(0) translateY(0);opacity:1;filter:blur(0)}
+}
+.queen-piece svg{filter:drop-shadow(0 0 8px var(--queen-glow)) drop-shadow(0 2px 4px rgba(0,0,0,0.8))}
+
+/* Queen shimmer */
+@keyframes queenShimmer{
+  0%,100%{filter:drop-shadow(0 0 6px var(--queen-glow))}
+  50%{filter:drop-shadow(0 0 16px rgba(232,201,106,0.9)) drop-shadow(0 0 30px rgba(201,168,76,0.5))}
+}
+.queen-piece svg{animation:queenShimmer 2.5s ease-in-out infinite}
+
+/* ── Stats panel ── */
+.stats-panel{
+  border:1px solid var(--gold-dim);
+  background:linear-gradient(160deg,rgba(201,168,76,0.05),rgba(26,18,8,0.8));
+  min-width:200px;
+  position:relative;
+}
+.stats-panel::before{
+  content:'✦';
+  position:absolute;top:8px;left:12px;
+  color:var(--gold-dim);font-size:0.7rem;
+}
+
+.stats-title{
+  font-family:'Cinzel',serif;font-size:0.6rem;
+  color:var(--gold-dim);letter-spacing:3px;text-transform:uppercase;
+  text-align:center;padding:12px 16px 8px;
+  border-bottom:1px solid rgba(201,168,76,0.12);
+}
+
+.stat-item{
+  padding:14px 16px;border-bottom:1px solid rgba(201,168,76,0.08);
+  display:flex;flex-direction:column;gap:4px;
+}
+.stat-item:last-child{border-bottom:none}
+
+.stat-name{font-family:'Cinzel',serif;font-size:0.55rem;color:var(--ivory-dim);letter-spacing:2px;text-transform:uppercase}
+.stat-value{
+  font-family:'Cinzel Decorative',cursive;
+  font-size:1.6rem;font-weight:700;
+  color:var(--gold2);line-height:1;
+  text-shadow:0 0 20px rgba(232,201,106,0.4);
+}
+.stat-value.red{color:#e07070;text-shadow:0 0 20px rgba(220,70,70,0.4)}
+.stat-value.green{color:#6ddb6d;text-shadow:0 0 20px rgba(100,220,100,0.4)}
+.stat-value.dim{color:var(--ivory-dim);text-shadow:none}
+
+.stat-sub{font-size:0.72rem;color:var(--ivory-dim);font-style:italic;margin-top:2px}
+
+/* Solution counter pill */
+.sol-pill{
+  margin:12px 16px;padding:8px 12px;
+  background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.15);
+  text-align:center;font-size:0.75rem;color:var(--ivory-dim);
+  font-style:italic;
+}
+.sol-pill strong{color:var(--gold)}
+
+/* ── Victory overlay ── */
+.victory-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.7);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;opacity:0;pointer-events:none;
+  transition:opacity 0.5s;
+}
+.victory-overlay.show{opacity:1;pointer-events:all}
+
+.victory-card{
+  border:2px solid var(--gold);
+  background:linear-gradient(135deg,#1a1208,#0d0a07);
+  padding:48px 56px;text-align:center;
+  position:relative;
+  box-shadow:0 0 80px rgba(201,168,76,0.3), inset 0 0 80px rgba(0,0,0,0.8);
+  animation:victoryPop 0.5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes victoryPop{
+  from{transform:scale(0.8) rotate(-3deg);opacity:0}
+  to{transform:scale(1) rotate(0);opacity:1}
+}
+.victory-card .crown-big{font-size:3rem;display:block;margin-bottom:8px;animation:crownBounce 1s ease-in-out infinite alternate}
+@keyframes crownBounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.victory-card h2{
+  font-family:'Cinzel Decorative',cursive;font-size:1.6rem;
+  color:var(--gold2);margin-bottom:8px;
+  text-shadow:0 0 30px var(--queen-glow);
+}
+.victory-card p{font-style:italic;color:var(--ivory-dim);margin-bottom:24px;font-size:1rem}
+.victory-card .btn-royal{margin:0 auto}
+
+/* ── Conflict flash ── */
+@keyframes conflictFlash{
+  0%,100%{box-shadow:inset 0 0 0px transparent}
+  50%{box-shadow:inset 0 0 30px rgba(200,50,50,0.6)}
+}
+.cell.conflict-flash{animation:conflictFlash 0.4s ease}
+
+/* ── Auto-solve progress ── */
+.auto-progress{
+  height:2px;
+  background:var(--gold-dim);
+  margin-bottom:16px;
+  position:relative;overflow:hidden;
+  display:none;
+}
+.auto-progress.show{display:block}
+.auto-progress-fill{
+  height:100%;background:var(--gold2);
+  width:0%;transition:width 0.3s;
+}
+.auto-progress::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.3) 50%,transparent 100%);
+  animation:shimmerBar 1.5s linear infinite;
+}
+@keyframes shimmerBar{from{transform:translateX(-100%)}to{transform:translateX(100%)}}</style>
+</head>
+<body>
+
+<!-- Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Victory overlay -->
+<div class="victory-overlay" id="victoryOverlay">
+  <div class="victory-card">
+    <span class="crown-big">👑</span>
+    <h2>The Realm is United!</h2>
+    <p id="victoryMsg">All lords have settled their keeps in peace.</p>
+    <button class="btn-royal" onclick="closeVictory()">✦ Continue ✦</button>
+  </div>
+</div>
+
+<div class="wrapper">
+  <header>
+    <span class="crown-ornament">✦ ♛ ✦</span>
+    <h1>Kingdom of Queensmere</h1>
+    <p class="subtitle">Place queens so no two may siege each other's keep</p>
+    <div class="hr-ornament"><span>❧</span></div>
+    <div class="hero-problem">
+      <div class="hero-problem-icon">♛</div>
+      <div><strong>The Real-World Problem:</strong> In any exam hall, if two students sit in the same row, column, or diagonal &mdash; they can see each other's answer sheets. This is exactly how a chess queen threatens other pieces.</div>
+    </div>
+  </header>
+
+  <!-- Chronicle -->
+  <div class="chronicle">
+    <div class="chronicle-label">Royal Chronicle</div>
+    <div class="chronicle-text" id="chronicle">Choose your mode and begin the royal placement...</div>
+  </div>
+
+  <!-- Mode Switcher -->
+  <div class="mode-switcher">
+    <button class="mode-btn active" id="btnManual" onclick="setMode('manual')">⚔ Manual Quest</button>
+    <button class="mode-btn" id="btnAuto" onclick="setMode('auto')">⚡ Auto Solve</button>
+    <button class="mode-btn" id="btnStep" onclick="setMode('step')">📜 Step-by-Step</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-row">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Realm Size</span>
+      <div class="size-btns">
+        <button class="sz-btn" onclick="setSize(4)">4</button>
+        <button class="sz-btn" onclick="setSize(5)">5</button>
+        <button class="sz-btn active" onclick="setSize(6)">6</button>
+        <button class="sz-btn" onclick="setSize(7)">7</button>
+        <button class="sz-btn" onclick="setSize(8)">8</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group" id="speedCtrl" style="display:none">
+      <span class="ctrl-label">Solve Speed</span>
+      <div class="speed-wrap">
+        <input type="range" id="speedSlider" min="50" max="900" value="400" oninput="updateSpeed()"/>
+        <span class="ctrl-label speed-label" id="speedLabel">Med</span>
+      </div>
+    </div>
+
+    <button class="btn-royal" id="btnSolve" onclick="triggerSolve()">▶ Begin</button>
+    <button class="btn-royal" id="btnNext" onclick="nextSolution()" style="display:none">→ Next</button>
+    <button class="btn-royal btn-danger" onclick="resetBoard()">↺ Clear Realm</button>
+  </div>
+
+  <!-- Auto progress bar -->
+  <div class="auto-progress" id="autoProgress">
+    <div class="auto-progress-fill" id="autoFill"></div>
+  </div>
+
+  <!-- Board + Stats -->
+  <div class="board-area">
+    <div class="board-container">
+      <div class="board-frame">
+        <div class="corner-tr"></div>
+        <div class="corner-bl"></div>
+        <div id="colLabels" class="col-labels"></div>
+        <div class="board-with-labels">
+          <div id="rowLabels" class="row-labels"></div>
+          <div id="board" class="board"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-panel">
+      <div class="stats-title">Royal Ledger</div>
+      <div class="stat-item">
+        <span class="stat-name">Queens Placed</span>
+        <span class="stat-value" id="statPlaced">0</span>
+        <span class="stat-sub" id="statPlacedSub">of <span id="statN">6</span> lords</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-name">Conflicts</span>
+        <span class="stat-value red" id="statConflicts">0</span>
+        <span class="stat-sub">sieges detected</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-name">Solutions</span>
+        <span class="stat-value dim" id="statSols">—</span>
+        <span class="stat-sub">valid arrangements</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-name">Backtracks</span>
+        <span class="stat-value dim" id="statBT">—</span>
+        <span class="stat-sub">retreats made</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-name">Steps</span>
+        <span class="stat-value dim" id="statSteps">—</span>
+      </div>
+      <div class="sol-pill" id="solPill" style="display:none">
+        Viewing solution <strong id="solIdx">1</strong> of <strong id="solTotal">1</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────────────────
+let N = 6;
+let mode = 'manual';        // 'manual' | 'auto' | 'step'
+let board = [];             // board[row] = col of queen (-1 = none)
+let solving = false;
+let stepSolutions = [];     // all solutions (for cycling)
+let stepIdx = 0;
+let autoTimer = null;
+let backtracks = 0;
+let steps = 0;
+let solveSpeed = 400;       // ms delay per auto step
+let stepQueue = [];         // queue of solver states for step-by-step
+let stepPos = 0;
+let allSolutions = [];
+let currentSolView = 0;
+let manualConflicts = 0;
+
+const CELL = () => window.innerWidth < 480 ? 52 : 68;
+
+// ─── Particles ───────────────────────────────────────────────────────────────
+(function initParticles(){
+  const c = document.getElementById('particles');
+  for(let i=0;i<25;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    p.style.cssText=`left:${Math.random()*100}%;--dur:${7+Math.random()*10}s;--delay:${Math.random()*10}s;--dx:${(Math.random()-0.5)*60}px;--op:${0.2+Math.random()*0.4};`;
+    c.appendChild(p);
+  }
+})();
+
+// ─── N-Queens Solver ──────────────────────────────────────────────────────────
+function isSafe(b,row,col){
+  for(let i=0;i<row;i++){
+    if(b[i]===col) return false;
+    if(Math.abs(b[i]-col)===Math.abs(i-row)) return false;
+  }
+  return true;
+}
+
+function findAllSolutions(n){
+  const sols=[];
+  const b=new Array(n).fill(-1);
+  function bt(row){
+    if(row===n){sols.push([...b]);return}
+    for(let c=0;c<n;c++){
+      if(isSafe(b,row,c)){b[row]=c;bt(row+1);b[row]=-1}
+    }
+  }
+  bt(0);return sols;
+}
+
+// Generate step-by-step trace
+function traceSolver(n){
+  const trace=[];
+  const b=new Array(n).fill(-1);
+  let bts=0,stps=0;
+  function bt(row){
+    for(let c=0;c<n;c++){
+      stps++;
+      if(isSafe(b,row,c)){
+        b[row]=c;
+        trace.push({board:[...b],row,col:c,action:'place',bt:bts,steps:stps});
+        if(row===n-1){
+          trace.push({board:[...b],row,col:c,action:'solution',bt:bts,steps:stps});
+        } else {
+          bt(row+1);
+        }
+        if(!isSafe(b,row,c)||b[row]===c){
+          bts++;
+          b[row]=-1;
+          trace.push({board:[...b],row,col:c,action:'backtrack',bt:bts,steps:stps});
+        }
+      }
+    }
+    b[row]=-1;
+  }
+  bt(0);
+  return trace;
+}
+
+// ─── Board Rendering ──────────────────────────────────────────────────────────
+function buildBoard(){
+  const cs=CELL();
+  const boardEl=document.getElementById('board');
+  boardEl.style.gridTemplateColumns=`repeat(${N},${cs}px)`;
+  boardEl.innerHTML='';
+
+  // Col labels
+  const colL=document.getElementById('colLabels');
+  colL.innerHTML='<div style="width:22px"></div>';
+  for(let c=0;c<N;c++){
+    const d=document.createElement('div');
+    d.className='axis-lbl';
+    d.style.cssText=`width:${cs}px;height:18px;font-size:0.6rem`;
+    d.textContent=String.fromCharCode(65+c);
+    colL.appendChild(d);
+  }
+
+  // Row labels
+  const rowL=document.getElementById('rowLabels');
+  rowL.innerHTML='';
+  for(let r=0;r<N;r++){
+    const d=document.createElement('div');
+    d.className='row-lbl';
+    d.style.cssText=`width:22px;height:${cs}px;font-size:0.6rem`;
+    d.textContent=r+1;
+    rowL.appendChild(d);
+  }
+
+  // Cells
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const cell=document.createElement('div');
+      cell.className='cell '+((r+c)%2===0?'light':'dark');
+      cell.style.cssText=`width:${cs}px;height:${cs}px`;
+      cell.dataset.row=r;cell.dataset.col=c;
+      cell.addEventListener('click',()=>onCellClick(r,c));
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function getCell(r,c){
+  return document.querySelector(`#board .cell[data-row="${r}"][data-col="${c}"]`);
+}
+
+function renderBoard(b, highlightThreats=true){
+  // Build threat map
+  const threatMap=Array.from({length:N},()=>new Array(N).fill(false));
+  const queenAt=[];
+  b.forEach((col,row)=>{
+    if(col<0)return;
+    queenAt.push({row,col});
+    if(!highlightThreats)return;
+    for(let c=0;c<N;c++)if(c!==col)threatMap[row][c]=true;
+    for(let r=0;r<N;r++)if(r!==row)threatMap[r][col]=true;
+    for(let d=1;d<N;d++){
+      [[row+d,col+d],[row+d,col-d],[row-d,col+d],[row-d,col-d]].forEach(([rr,cc])=>{
+        if(rr>=0&&rr<N&&cc>=0&&cc<N)threatMap[rr][cc]=true;
+      });
+    }
+  });
+
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const cell=getCell(r,c);
+      if(!cell)continue;
+      const base=(r+c)%2===0?'light':'dark';
+      cell.className='cell '+base;
+      cell.innerHTML='';
+      const isQueen=b[r]===c;
+      if(isQueen){
+        cell.classList.add('queen-placed');
+        cell.innerHTML=queenSVG(CELL()-14);
+      } else if(highlightThreats&&threatMap[r][c]){
+        cell.classList.add('threatened');
+        const dot=document.createElement('div');
+        dot.className='threat-dot';
+        cell.appendChild(dot);
+      }
+    }
+  }
+}
+
+function queenSVG(size){
+  const s=size;
+  return `<div class="queen-piece"><svg width="${s}" height="${s}" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 4 L14 16 L4 10 L8 26 L32 26 L36 10 L26 16 Z" fill="url(#qg)" stroke="#c9a84c" stroke-width="0.8"/>
+    <rect x="7" y="26" width="26" height="7" rx="1" fill="url(#qg)" stroke="#c9a84c" stroke-width="0.8"/>
+    <circle cx="4" cy="10" r="2.5" fill="#e8c96a"/>
+    <circle cx="20" cy="4" r="2.5" fill="#e8c96a"/>
+    <circle cx="36" cy="10" r="2.5" fill="#e8c96a"/>
+    <circle cx="14" cy="16" r="1.8" fill="#fff" opacity="0.7"/>
+    <circle cx="26" cy="16" r="1.8" fill="#fff" opacity="0.7"/>
+    <defs>
+      <linearGradient id="qg" x1="4" y1="4" x2="36" y2="34" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#e8c96a"/>
+        <stop offset="100%" stop-color="#a07820"/>
+      </linearGradient>
+    </defs>
+  </svg></div>`;
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function updateStats(placed, conflicts, sols, bt, stps){
+  document.getElementById('statPlaced').textContent=placed;
+  document.getElementById('statN').textContent=N;
+  if(conflicts!==null){
+    document.getElementById('statConflicts').textContent=conflicts;
+    document.getElementById('statConflicts').className='stat-value'+(conflicts>0?' red':' green');
+  }
+  if(sols!==null) document.getElementById('statSols').textContent=sols;
+  if(bt!==null)   document.getElementById('statBT').textContent=bt;
+  if(stps!==null) document.getElementById('statSteps').textContent=stps;
+}
+
+function chronicle(msg, type='normal'){
+  const el=document.getElementById('chronicle');
+  el.textContent=msg;
+  el.className='chronicle-text'+(type==='victory'?' victory':type==='conflict'?' conflict':'');
+}
+
+// ─── Mode ─────────────────────────────────────────────────────────────────────
+function setMode(m){
+  stopAuto();
+  mode=m;
+  ['manual','auto','step'].forEach(x=>{
+    document.getElementById('btn'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('active',x===m);
+  });
+  const speedCtrl=document.getElementById('speedCtrl');
+  const btnSolve=document.getElementById('btnSolve');
+  const btnNext=document.getElementById('btnNext');
+
+  speedCtrl.style.display=(m==='auto'||m==='step')?'flex':'none';
+
+  if(m==='manual'){
+    btnSolve.style.display='none';
+    btnNext.style.display='none';
+    chronicle("Click cells to place your queens. Each lord must rule alone — no row, column, or diagonal shared.",'normal');
+  } else if(m==='auto'){
+    btnSolve.style.display='';
+    btnSolve.textContent='▶ Auto Solve';
+    btnNext.style.display='none';
+    chronicle("Press Auto Solve to watch the backtracking algorithm conquer the realm...",'normal');
+  } else {
+    btnSolve.style.display='';
+    btnSolve.textContent='▶ Start Steps';
+    btnNext.style.display='';
+    document.getElementById('btnNext').textContent='→ Next Step';
+    chronicle("Use Step-by-Step to trace the algorithm's every move...",'normal');
+  }
+  resetBoard(false);
+}
+
+// ─── Size ─────────────────────────────────────────────────────────────────────
+function setSize(n){
+  stopAuto();
+  N=n;
+  document.querySelectorAll('.sz-btn').forEach((b,i)=>{
+    b.classList.toggle('active',[4,5,6,7,8][i]===n);
+  });
+  document.getElementById('statN').textContent=n;
+  resetBoard(false);
+}
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+function resetBoard(keepMode=true){
+  stopAuto();
+  board=new Array(N).fill(-1);
+  allSolutions=[];currentSolView=0;
+  stepQueue=[];stepPos=0;backtracks=0;steps=0;manualConflicts=0;
+  document.getElementById('autoProgress').classList.remove('show');
+  document.getElementById('solPill').style.display='none';
+  document.getElementById('btnNext').style.display=mode==='step'?'':'none';
+  buildBoard();
+  renderBoard(board,true);
+  updateStats(0,0,'—','—','—');
+  if(mode==='manual') chronicle("Click cells to place your queens. Each lord must rule alone.",'normal');
+  else if(mode==='auto') chronicle("Press Auto Solve to watch the backtracking algorithm conquer the realm...",'normal');
+  else chronicle("Press Start Steps, then Next Step to trace the algorithm...",'normal');
+}
+
+// ─── Manual Mode ──────────────────────────────────────────────────────────────
+function onCellClick(row,col){
+  if(mode!=='manual')return;
+  if(solving)return;
+
+  // Toggle: if queen already there, remove
+  if(board[row]===col){
+    board[row]=-1;
+  } else {
+    board[row]=col;
+  }
+  // Count conflicts
+  let conflicts=0;
+  for(let r=0;r<N;r++){
+    if(board[r]<0)continue;
+    for(let r2=r+1;r2<N;r2++){
+      if(board[r2]<0)continue;
+      if(board[r]===board[r2]||Math.abs(board[r]-board[r2])===Math.abs(r-r2)){
+        conflicts++;
+        // Flash conflicting cells
+        [getCell(r,board[r]),getCell(r2,board[r2])].forEach(c=>{
+          if(c){c.classList.add('conflict-flash');setTimeout(()=>c.classList.remove('conflict-flash'),500)}
+        });
+      }
+    }
+  }
+
+  const placed=board.filter(x=>x>=0).length;
+  renderBoard(board,true);
+  updateStats(placed,conflicts,null,null,null);
+
+  if(conflicts>0){
+    chronicle(`⚔ Conflict detected! ${conflicts} siege(s) — rearrange your lords.`,'conflict');
+  } else if(placed===N){
+    // Victory!
+    chronicle(`👑 The realm is united! All ${N} lords dwell in peace!`,'victory');
+    updateStats(placed,0,null,null,null);
+    showVictory(`${N} lords placed — zero sieges — a perfect realm!`);
+  } else {
+    const left=N-placed;
+    chronicle(`${placed} lord${placed!==1?'s':''} seated. ${left} keep${left!==1?'s':''} still await their ruler...`,'normal');
+  }
+}
+
+// ─── Auto Solve ───────────────────────────────────────────────────────────────
+function triggerSolve(){
+  if(mode==='auto') startAutoSolve();
+  else if(mode==='step') initStepSolve();
+}
+
+function startAutoSolve(){
+  stopAuto();
+  board=new Array(N).fill(-1);
+  backtracks=0;steps=0;
+  renderBoard(board,true);
+  document.getElementById('autoProgress').classList.add('show');
+  document.getElementById('autoFill').style.width='0%';
+  chronicle('The algorithm rides forth... watching every row...','normal');
+
+  const trace=traceSolver(N);
+  const sols=trace.filter(t=>t.action==='solution').length;
+  let i=0;
+  updateStats(0,0,sols,0,0);
+  document.getElementById('statSols').textContent=sols;
+
+  solving=true;
+  function step(){
+    if(i>=trace.length){
+      solving=false;
+      document.getElementById('autoProgress').classList.remove('show');
+      // Show first solution
+      allSolutions=findAllSolutions(N);
+      showSolutionView(0);
+      return;
+    }
+    const t=trace[i++];
+    board=[...t.board];
+    const placed=board.filter(x=>x>=0).length;
+    renderBoard(board,true);
+    updateStats(placed,0,sols,t.bt,t.steps);
+    document.getElementById('autoFill').style.width=(i/trace.length*100)+'%';
+
+    if(t.action==='place'){
+      chronicle(`Placing lord in row ${t.row+1}, column ${String.fromCharCode(65+t.col)}...`,'normal');
+    } else if(t.action==='backtrack'){
+      chronicle(`Conflict! Retreating from row ${t.row+1}... (backtrack #${t.bt})`,'conflict');
+    } else if(t.action==='solution'){
+      chronicle(`✦ Solution found! Realm at peace momentarily...`,'victory');
+    }
+    autoTimer=setTimeout(step, getDelay());
+  }
+  step();
+}
+
+function getDelay(){
+  const v=parseInt(document.getElementById('speedSlider').value);
+  // invert: higher slider = faster = less delay
+  return Math.round(950-v);
+}
+
+function stopAuto(){
+  if(autoTimer){clearTimeout(autoTimer);autoTimer=null}
+  solving=false;
+}
+
+// ─── Step-by-Step Mode ────────────────────────────────────────────────────────
+function initStepSolve(){
+  stopAuto();
+  board=new Array(N).fill(-1);
+  backtracks=0;steps=0;
+  stepQueue=traceSolver(N);
+  stepPos=0;
+  renderBoard(board,true);
+  allSolutions=findAllSolutions(N);
+  const sols=allSolutions.length;
+  updateStats(0,0,sols,0,0);
+  chronicle('Step-by-Step ready. Press "Next Step" to advance the algorithm...','normal');
+  document.getElementById('btnSolve').disabled=true;
+}
+
+function nextSolution(){
+  if(mode==='step'){
+    // Step through trace
+    if(stepPos>=stepQueue.length){
+      chronicle('Algorithm complete! All solutions explored.','victory');
+      return;
+    }
+    const t=stepQueue[stepPos++];
+    board=[...t.board];
+    const placed=board.filter(x=>x>=0).length;
+    renderBoard(board,true);
+    const sols=allSolutions.length;
+    updateStats(placed,0,sols,t.bt,t.steps);
+    if(t.action==='place') chronicle(`Step ${stepPos}: Placing lord → Row ${t.row+1}, Col ${String.fromCharCode(65+t.col)}`,'normal');
+    else if(t.action==='backtrack') chronicle(`Step ${stepPos}: ⚔ Backtrack from Row ${t.row+1} (retreat #${t.bt})`,'conflict');
+    else if(t.action==='solution') chronicle(`Step ${stepPos}: ✦ Valid arrangement found!`,'victory');
+    if(stepPos>=stepQueue.length){
+      chronicle('All steps complete. Realm fully explored! ✦','victory');
+      document.getElementById('btnSolve').disabled=false;
+    }
+  } else if(mode==='auto'){
+    // Cycle solutions
+    if(allSolutions.length===0) return;
+    currentSolView=(currentSolView+1)%allSolutions.length;
+    showSolutionView(currentSolView);
+  }
+}
+
+function showSolutionView(idx){
+  if(allSolutions.length===0)return;
+  currentSolView=idx;
+  board=[...allSolutions[idx]];
+  renderBoard(board,true);
+  const placed=board.filter(x=>x>=0).length;
+  updateStats(placed,0,allSolutions.length,backtracks,steps);
+  document.getElementById('solPill').style.display='';
+  document.getElementById('solIdx').textContent=idx+1;
+  document.getElementById('solTotal').textContent=allSolutions.length;
+  document.getElementById('btnNext').style.display='';
+  document.getElementById('btnNext').textContent='→ Next Solution';
+  chronicle(`👑 The realm is united! Viewing solution ${idx+1} of ${allSolutions.length}.`,'victory');
+  if(idx===0) showVictory(`${allSolutions.length} valid arrangements found! The realm stands in peace.`);
+}
+
+// ─── Victory ──────────────────────────────────────────────────────────────────
+function showVictory(msg){
+  document.getElementById('victoryMsg').textContent=msg;
+  document.getElementById('victoryOverlay').classList.add('show');
+}
+function closeVictory(){
+  document.getElementById('victoryOverlay').classList.remove('show');
+}
+
+// ─── Speed slider label ───────────────────────────────────────────────────────
+function updateSpeed(){
+  const v=parseInt(document.getElementById('speedSlider').value);
+  solveSpeed=v;
+  const labels=['Slow','Med','Fast','Ludicrous'];
+  const idx=Math.floor((v-50)/220);
+  document.getElementById('speedLabel').textContent=labels[Math.min(idx,3)]||'Fast';
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildBoard();
+renderBoard(board,true);
+updateStats(0,0,'—','—','—');
+setMode('manual');
+</script>
+</body>
+</html>
